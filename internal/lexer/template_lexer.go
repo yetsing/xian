@@ -52,6 +52,9 @@ type TemplateLexer struct {
 	tokenIndex int
 	// 已经读取过的 token 数组
 	tokens []token.Token
+
+	ignoredTokens []token.TokenType
+	ignoreIfEmpty []token.TokenType
 }
 
 func NewTemplateLexer(input string, config TemplateLexerConfig) *TemplateLexer {
@@ -64,6 +67,19 @@ func NewTemplateLexer(input string, config TemplateLexerConfig) *TemplateLexer {
 		tokenIndex:   0,
 		tokens:       []token.Token{},
 		positioner:   nil,
+		ignoredTokens: []token.TokenType{
+			token.TOKEN_COMMENT_BEGIN,
+			token.TOKEN_COMMENT,
+			token.TOKEN_COMMENT_END,
+			token.TOKEN_LINECOMMENT_BEGIN,
+			token.TOKEN_LINECOMMENT,
+			token.TOKEN_LINECOMMENT_END,
+		},
+		ignoreIfEmpty: []token.TokenType{
+			token.TOKEN_DATA,
+			token.TOKEN_COMMENT,
+			token.TOKEN_LINECOMMENT,
+		},
 	}
 
 	tl.initCodeTag()
@@ -89,6 +105,10 @@ func (tl *TemplateLexer) getToken(index int) token.Token {
 	if index >= len(tl.tokens) {
 		// 索引超出已读取范围，再次进行读取
 		tk := tl.readToken()
+		for tl.shouldIgnoreToken(tk) {
+			// 如果是需要忽略的 token ，继续读取下一个
+			tk = tl.readToken()
+		}
 		tl.tokens = append(tl.tokens, tk)
 	}
 	return tl.tokens[index]
@@ -137,6 +157,16 @@ BEGIN:
 	panic(fmt.Sprintf("unexpected segment type: %s", segment.Type))
 }
 
+func (tl *TemplateLexer) shouldIgnoreToken(tk token.Token) bool {
+	if tk.TypeIn(tl.ignoredTokens...) {
+		return true
+	}
+	if tk.TypeIn(tl.ignoreIfEmpty...) && tk.Literal == "" {
+		return true
+	}
+	return false
+}
+
 func (tl *TemplateLexer) getPos(index int) token.Position {
 	return tl.positioner.MustGetLineColumn(index)
 }
@@ -148,10 +178,10 @@ func (tl *TemplateLexer) initCodeTag() {
 		{start: tl.config.CommentStart, end: tl.config.CommentEnd, startType: token.TOKEN_COMMENT_BEGIN, endType: token.TOKEN_COMMENT_END},
 	}
 	if tl.config.LineStatementPrefix != "" {
-		tl.codeTags = append(tl.codeTags, CodeTag{start: tl.config.LineStatementPrefix, end: "\n", startType: token.TOKEN_BLOCK_BEGIN, endType: token.TOKEN_BLOCK_END})
+		tl.codeTags = append(tl.codeTags, CodeTag{start: tl.config.LineStatementPrefix, end: "\n", startType: token.TOKEN_LINESTATEMENT_BEGIN, endType: token.TOKEN_LINESTATEMENT_END})
 	}
 	if tl.config.LineCommentPrefix != "" {
-		tl.codeTags = append(tl.codeTags, CodeTag{start: tl.config.LineCommentPrefix, end: "\n", startType: token.TOKEN_COMMENT_BEGIN, endType: token.TOKEN_COMMENT_END})
+		tl.codeTags = append(tl.codeTags, CodeTag{start: tl.config.LineCommentPrefix, end: "\n", startType: token.TOKEN_LINECOMMENT_BEGIN, endType: token.TOKEN_LINECOMMENT_END})
 	}
 }
 

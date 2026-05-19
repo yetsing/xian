@@ -515,7 +515,6 @@ func parseRune(s string, base int, bitSize int) (rune, error) {
 
 func (l *Lexer) readString(end rune) token.Token {
 	var sb strings.Builder
-	sb.WriteRune(l.ch)
 	// 跳过开始的引号
 	l.readChar()
 	for {
@@ -626,7 +625,6 @@ func (l *Lexer) readString(end rune) token.Token {
 		sb.WriteRune(l.ch)
 		l.readChar()
 	}
-	sb.WriteRune(l.ch)
 	// 跳过末尾的引号
 	l.readChar()
 	tok := l.buildToken(token.TOKEN_STRING)
