@@ -2,7 +2,6 @@ package lexer
 
 import (
 	"errors"
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -253,14 +252,6 @@ func (l *Lexer) advance(n int) {
 	}
 }
 
-func (l *Lexer) getString(n int) (string, error) {
-	if l.index+n > len(l.ucodes) {
-		return string(l.ucodes[l.index:len(l.ucodes)]), errors.New("not enough char")
-	}
-	s := string(l.ucodes[l.index : l.index+n])
-	return s, nil
-}
-
 func (l *Lexer) peekCharIs(ch rune) bool {
 	nextIndex := l.index + 1
 	if nextIndex >= len(l.ucodes) {
@@ -496,15 +487,6 @@ func (l *Lexer) tryZerointeger() (token.Token, error) {
 	}
 	tok := l.buildToken(token.TOKEN_INTEGER)
 	return tok, nil
-}
-
-func parseRune(s string, base int, bitSize int) (rune, error) {
-	n, err := strconv.ParseUint(s, base, bitSize)
-	if err != nil {
-		return 0, err
-	}
-	r := rune(n)
-	return r, nil
 }
 
 func (l *Lexer) readString(end rune) token.Token {

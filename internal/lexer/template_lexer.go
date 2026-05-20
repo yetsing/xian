@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/yetsing/xian/internal/token"
 )
@@ -238,7 +239,7 @@ func (tl *TemplateLexer) splitSegments() {
 		}
 
 		startIndex := matchIndex
-		endIndex := FindByteIndex(tl.input, matchCodeTag.end, startIndex)
+		endIndex := FindByteIndex(tl.input, matchCodeTag.end, startIndex+len(matchCodeTag.start))
 		if endIndex == -1 {
 			tl.segments = append(tl.segments, token.Token{
 				Type:    token.TOKEN_ILLEGAL,
@@ -255,8 +256,10 @@ func (tl *TemplateLexer) splitSegments() {
 			Start:   tl.getPos(index),
 			End:     tl.getPos(startIndex),
 		}
+		stripSign := byte(0)
 		startLen := len(matchCodeTag.start)
-		if strings.ContainsRune("+-", rune(tl.input[startIndex+startLen])) {
+		if tl.input[startIndex+startLen] == '-' || tl.input[startIndex+startLen] == '+' {
+			stripSign = tl.input[startIndex+startLen]
 			startLen++
 		}
 		startToken := token.Token{
@@ -265,10 +268,39 @@ func (tl *TemplateLexer) splitSegments() {
 			Start:   tl.getPos(startIndex),
 			End:     tl.getPos(startIndex + startLen),
 		}
+		if dataToken.Literal != "" {
+			if stripSign == '-' {
+				// strip all whitespace before
+				dataToken.Literal = strings.TrimRightFunc(dataToken.Literal, unicode.IsSpace)
+			} else if stripSign != '+' && tl.config.LstripBlocks && matchCodeTag.startType != token.TOKEN_VARIABLE_BEGIN {
+				// strip whitespace from the beginning of a line to the start of a block
+				// Nothing will be stripped if there are other characters before the start of the block.
+				lastNewline := strings.LastIndex(dataToken.Literal, "\n")
+				if lastNewline != -1 {
+					if IsAllWhitespace(dataToken.Literal[lastNewline+1:]) {
+						dataToken.Literal = dataToken.Literal[:lastNewline+1]
+					}
+				} else if IsAllWhitespace(dataToken.Literal) {
+					dataToken.Literal = ""
+				}
+			}
+		}
+		stripSign = 0
 		endLen := len(matchCodeTag.end)
-		if strings.ContainsRune("+-", rune(tl.input[endIndex-1])) {
+		if tl.input[endIndex-1] == '-' || tl.input[endIndex-1] == '+' {
+			stripSign = tl.input[endIndex-1]
 			endLen++
 			endIndex--
+		}
+		// 行为与 jinja2 保持一致，将空白字符放在 endToken
+		if stripSign == '-' {
+			// strip all whitespace after
+			endLen += leftWhitespaceByteCount(tl.input[endIndex+endLen:])
+		} else if stripSign != '+' && tl.config.TrimBlocks && matchCodeTag.endType != token.TOKEN_VARIABLE_END {
+			// strip the first newline after a template tag
+			if strings.HasPrefix(tl.input[endIndex+endLen:], "\n") {
+				endLen++
+			}
 		}
 		endToken := token.Token{
 			Type:    matchCodeTag.endType,
@@ -285,10 +317,7 @@ func (tl *TemplateLexer) splitSegments() {
 		if matchCodeTag.startType == token.TOKEN_COMMENT_BEGIN {
 			codeToken.Type = token.TOKEN_COMMENT
 		}
-		if startIndex > index {
-			tl.segments = append(tl.segments, dataToken)
-		}
-		tl.segments = append(tl.segments, startToken, codeToken, endToken)
+		tl.segments = append(tl.segments, dataToken, startToken, codeToken, endToken)
 
 		index = endIndex + endLen
 	}
@@ -313,33 +342,4 @@ func (tl *TemplateLexer) splitSegments() {
 func (tl *TemplateLexer) normalizeNewlines(value string) string {
 	replacer := strings.NewReplacer("\r\n", tl.config.NewlineSequence, "\r", tl.config.NewlineSequence, "\n", tl.config.NewlineSequence)
 	return replacer.Replace(value)
-}
-
-// normalizeAllNewlines handles \r\n and legacy \r, turning both into \n
-func normalizeAllNewlines(s string) string {
-	replacer := strings.NewReplacer("\r\n", "\n", "\r", "\n")
-	return replacer.Replace(s)
-}
-
-// FindByteIndex mimics Python's str.find(sub, start) but returns the BYTE index.
-// 'start' must be a valid byte index and UTF-8 boundary.
-// Returns -1 if the substring is not found.
-func FindByteIndex(s, sub string, start int) int {
-	// Guard against out-of-bounds start indices
-	if start < 0 {
-		start = 0
-	}
-	if start >= len(s) {
-		return -1
-	}
-
-	// Slice from the start byte and find the substring
-	byteIdx := strings.Index(s[start:], sub)
-	if byteIdx == -1 {
-		return -1
-	}
-
-	// The returned index is relative to the slice,
-	// so add the 'start' offset to get the absolute byte index.
-	return start + byteIdx
 }
