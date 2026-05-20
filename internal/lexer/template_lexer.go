@@ -202,16 +202,24 @@ func (tl *TemplateLexer) convertToken(tk token.Token) token.Token {
 	case token.TOKEN_DATA:
 		tk.Literal = tl.normalizeNewlines(tk.Literal)
 	case token.TOKEN_STRING:
-		literal := tk.Literal
-		if tk.Literal != "" && tk.Literal[0] == '\'' {
-			literal = fmt.Sprintf("\"%s\"", literal[1:len(literal)-1])
+		if tk.Literal == "" {
+			break
 		}
-		literal = tl.normalizeNewlines(literal)
-		tk.Literal, err = strconv.Unquote(literal)
-		if err != nil {
-			tk.Type = token.TOKEN_ILLEGAL
-			tk.Literal = fmt.Sprintf("invalid string literal, %v", err)
+		// remote the quotes and unescape the string literal
+		literal := tk.Literal[1 : len(tk.Literal)-1]
+		// Unquote 不支持多行双引号字符串，因此分行 Unquote
+		lines := strings.Split(literal, "\n")
+		for i, line := range lines {
+			lines[i], err = strconv.Unquote(fmt.Sprintf(`"%s"`, line))
+			if err != nil {
+				tk.Type = token.TOKEN_ILLEGAL
+				tk.Literal = fmt.Sprintf("string literal unquote error: %v", err)
+				return tk
+			}
 		}
+		// 跟 jinja2 保持一致，字符串中的换行会被转换成配置中的换行序列
+		// 注意：替换的换行是文本本身的换行，而不是字符串字面量中的 \n
+		tk.Literal = strings.Join(lines, tl.config.NewlineSequence)
 	}
 	return tk
 }
@@ -239,7 +247,25 @@ func (tl *TemplateLexer) splitSegments() {
 		}
 
 		startIndex := matchIndex
-		endIndex := FindByteIndex(tl.input, matchCodeTag.end, startIndex+len(matchCodeTag.start))
+		endFindOffset := startIndex + len(matchCodeTag.start)
+		endIndex := -1
+		for endFindOffset <= len(tl.input) {
+			idx := FindByteIndex(tl.input, matchCodeTag.end, endFindOffset)
+			if idx == -1 {
+				tl.segments = append(tl.segments, token.Token{
+					Type:    token.TOKEN_ILLEGAL,
+					Literal: fmt.Sprintf("unclosed code tag %s", matchCodeTag.start),
+					Start:   tl.getPos(startIndex),
+					End:     tl.getPos(startIndex),
+				})
+				return
+			}
+			if tl.isBalance(startIndex+len(matchCodeTag.start), idx) {
+				endIndex = idx
+				break
+			}
+			endFindOffset = idx + 1 // +1 to avoid finding the same end tag again
+		}
 		if endIndex == -1 {
 			tl.segments = append(tl.segments, token.Token{
 				Type:    token.TOKEN_ILLEGAL,
@@ -342,4 +368,34 @@ func (tl *TemplateLexer) splitSegments() {
 func (tl *TemplateLexer) normalizeNewlines(value string) string {
 	replacer := strings.NewReplacer("\r\n", tl.config.NewlineSequence, "\r", tl.config.NewlineSequence, "\n", tl.config.NewlineSequence)
 	return replacer.Replace(value)
+}
+
+// isBalance 检查 [start, end) 范围内的引号和括号是否平衡
+func (tl *TemplateLexer) isBalance(start int, end int) bool {
+	stack := NewByteStack()
+	for i := start; i < end; i++ {
+		ch := tl.input[i]
+		if ch == '"' || ch == '\'' {
+			quoteIndex := FindQuote(tl.input[i+1:end], ch)
+			if quoteIndex == -1 {
+				return false
+			}
+			i += quoteIndex + 1 // +1 to skip the closing quote
+			continue
+		}
+		switch ch {
+		case '(':
+			stack.Push(')')
+		case '[':
+			stack.Push(']')
+		case '{':
+			stack.Push('}')
+		case ')', ']', '}':
+			top, ok := stack.Pop()
+			if !ok || top != ch {
+				return false
+			}
+		}
+	}
+	return stack.Empty()
 }

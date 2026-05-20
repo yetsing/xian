@@ -34,6 +34,19 @@ func FindByteIndex(s, sub string, start int) int {
 	return start + byteIdx
 }
 
+func FindQuote(s string, quote byte) int {
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' {
+			i++ // Skip the next character after a backslash
+			continue
+		}
+		if s[i] == quote {
+			return i
+		}
+	}
+	return -1
+}
+
 func IsAllWhitespace(s string) bool {
 	if len(s) == 0 {
 		return false
@@ -48,4 +61,31 @@ func IsAllWhitespace(s string) bool {
 
 func leftWhitespaceByteCount(s string) int {
 	return len(s) - len(strings.TrimLeftFunc(s, unicode.IsSpace))
+}
+
+type ByteStack struct {
+	items []byte
+}
+
+func NewByteStack() *ByteStack {
+	return &ByteStack{
+		items: []byte{},
+	}
+}
+
+func (s *ByteStack) Push(item byte) {
+	s.items = append(s.items, item)
+}
+
+func (s *ByteStack) Pop() (byte, bool) {
+	if len(s.items) == 0 {
+		return 0, false
+	}
+	item := s.items[len(s.items)-1]
+	s.items = s.items[:len(s.items)-1]
+	return item, true
+}
+
+func (s *ByteStack) Empty() bool {
+	return len(s.items) == 0
 }
