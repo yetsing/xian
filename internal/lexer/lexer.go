@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-	"unicode/utf8"
 
 	"github.com/yetsing/xian/internal/token"
 )
@@ -37,12 +36,20 @@ type Lexer struct {
 	// 下一个 token 的索引
 	tokenIndex int
 	tokens     []token.Token
+
+	enableMultilineString bool
 }
 
 func NewLexer(input string) *Lexer {
 	l := &Lexer{input: input, index: -1}
 	l.init()
 	l.readChar()
+	return l
+}
+
+func NewLexerWith(input string, enableMultilineString bool) *Lexer {
+	l := NewLexer(input)
+	l.enableMultilineString = enableMultilineString
 	return l
 }
 
@@ -491,19 +498,6 @@ func (l *Lexer) tryZerointeger() (token.Token, error) {
 	return tok, nil
 }
 
-var escapeMap = map[rune]rune{
-	'\\': '\\',
-	'\'': '\'',
-	'"':  '"',
-	'a':  '\a',
-	'b':  '\b',
-	'f':  '\f',
-	'n':  '\n',
-	'r':  '\r',
-	't':  '\t',
-	'v':  '\v',
-}
-
 func parseRune(s string, base int, bitSize int) (rune, error) {
 	n, err := strconv.ParseUint(s, base, bitSize)
 	if err != nil {
@@ -514,122 +508,29 @@ func parseRune(s string, base int, bitSize int) (rune, error) {
 }
 
 func (l *Lexer) readString(end rune) token.Token {
-	var sb strings.Builder
 	// 跳过开始的引号
 	l.readChar()
 	for {
-		// 参考 Python 的转义字符 https://docs.python.org/3/reference/lexical_analysis.html#string-and-bytes-literals
-		// 处理转义字符
-		ch := l.ch
-		if ch == '\\' {
+		// 识别引号转义
+		if l.ch == '\\' && l.peekCharIs(end) {
 			l.readChar()
-			if actual, ok := escapeMap[l.ch]; ok {
-				sb.WriteRune(actual)
-				l.readChar()
-				continue
-			}
-			// 解析 Unicode 转义字符
-			var ucode rune
-			var codeLen int
-			switch l.ch {
-			case 'x':
-				// 格式为 "\xhh" h 代表十六进制字符
-				// 跳过 'x' 字符
-				l.readChar()
-				codeLen = 2
-				s, err := l.getString(codeLen)
-				if err != nil {
-					tok := l.buildToken(token.TOKEN_ILLEGAL)
-					tok.Literal = "illegal escape sequence"
-					return tok
-				}
-				ucode, err = parseRune(s, 16, 8)
-				if err != nil {
-					tok := l.buildToken(token.TOKEN_ILLEGAL)
-					tok.Literal = "illegal escape sequence"
-					return tok
-				}
-			case 'u':
-				// 格式为 "\uhhhh" h 代表十六进制字符
-				// 跳过 'u' 字符
-				l.readChar()
-				codeLen = 4
-				s, err := l.getString(codeLen)
-				if err != nil {
-					tok := l.buildToken(token.TOKEN_ILLEGAL)
-					tok.Literal = "illegal escape sequence"
-					return tok
-				}
-				ucode, err = parseRune(s, 16, 16)
-				if err != nil {
-					tok := l.buildToken(token.TOKEN_ILLEGAL)
-					tok.Literal = "illegal escape sequence"
-					return tok
-				}
-			case 'U':
-				// 格式为 "\Uhhhhhhhh" h 代表十六进制字符
-				// 跳过 'u' 字符
-				l.readChar()
-				codeLen = 8
-				s, err := l.getString(codeLen)
-				if err != nil {
-					tok := l.buildToken(token.TOKEN_ILLEGAL)
-					tok.Literal = "illegal escape sequence"
-					return tok
-				}
-				ucode, err = parseRune(s, 16, 32)
-				if err != nil {
-					tok := l.buildToken(token.TOKEN_ILLEGAL)
-					tok.Literal = "illegal escape sequence"
-					return tok
-				}
-			case '0', '1', '2', '3', '4', '5', '6', '7':
-				// 格式为 "\ooo" o 代表八进制字符，最大为 "\377" (255)
-				codeLen = 3
-				s, err := l.getString(codeLen)
-				if err != nil {
-					tok := l.buildToken(token.TOKEN_ILLEGAL)
-					tok.Literal = "illegal escape sequence"
-					return tok
-				}
-				ucode, err = parseRune(s, 8, 8)
-				if err != nil {
-					tok := l.buildToken(token.TOKEN_ILLEGAL)
-					tok.Literal = "illegal escape sequence"
-					return tok
-				}
-			default:
-				// 非法转义字符
-				tok := l.buildToken(token.TOKEN_ILLEGAL)
-				tok.Literal = "illegal escape sequence"
-				return tok
-			}
-			if !utf8.ValidRune(ucode) {
-				tok := l.buildToken(token.TOKEN_ILLEGAL)
-				tok.Literal = "escape sequence is invalid Unicode code point"
-				return tok
-			}
-			sb.WriteRune(ucode)
-			l.advance(codeLen)
+			l.readChar()
 			continue
 		}
 
 		if l.ch == end {
 			break
 		}
-		if l.ch == 0 || l.ch == '\n' {
+		if l.ch == 0 || (l.ch == '\n' && !l.enableMultilineString) {
 			tok := l.buildToken(token.TOKEN_ILLEGAL)
 			tok.Literal = "string literal not terminated"
 			return tok
 		}
-		sb.WriteRune(l.ch)
 		l.readChar()
 	}
 	// 跳过末尾的引号
 	l.readChar()
-	tok := l.buildToken(token.TOKEN_STRING)
-	tok.Literal = sb.String()
-	return tok
+	return l.buildToken(token.TOKEN_STRING)
 }
 
 func (l *Lexer) readRawString() token.Token {

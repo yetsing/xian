@@ -2,6 +2,7 @@ package lexer
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/yetsing/xian/internal/token"
@@ -109,6 +110,7 @@ func (tl *TemplateLexer) getToken(index int) token.Token {
 			// 如果是需要忽略的 token ，继续读取下一个
 			tk = tl.readToken()
 		}
+		tk = tl.convertToken(tk)
 		tl.tokens = append(tl.tokens, tk)
 	}
 	return tl.tokens[index]
@@ -135,7 +137,7 @@ BEGIN:
 	case token.TOKEN_STRING:
 		// 进入代码块，使用 codeLexer 进行词法分析
 		if tl.codeLexer == nil {
-			tl.codeLexer = NewLexer(segment.Literal)
+			tl.codeLexer = NewLexerWith(segment.Literal, true)
 		}
 		tk := tl.codeLexer.NextToken()
 		if tk.TypeIs(token.TOKEN_EOF) {
@@ -191,6 +193,26 @@ func (tl *TemplateLexer) processInput() {
 		tl.input = tl.input[:len(tl.input)-1]
 	}
 	tl.positioner = token.NewLineColumnIndex(tl.input)
+}
+
+func (tl *TemplateLexer) convertToken(tk token.Token) token.Token {
+	var err error
+	switch tk.Type {
+	case token.TOKEN_DATA:
+		tk.Literal = tl.normalizeNewlines(tk.Literal)
+	case token.TOKEN_STRING:
+		literal := tk.Literal
+		if tk.Literal != "" && tk.Literal[0] == '\'' {
+			literal = fmt.Sprintf("\"%s\"", literal[1:len(literal)-1])
+		}
+		literal = tl.normalizeNewlines(literal)
+		tk.Literal, err = strconv.Unquote(literal)
+		if err != nil {
+			tk.Type = token.TOKEN_ILLEGAL
+			tk.Literal = fmt.Sprintf("invalid string literal, %v", err)
+		}
+	}
+	return tk
 }
 
 func (tl *TemplateLexer) splitSegments() {
@@ -286,6 +308,11 @@ func (tl *TemplateLexer) splitSegments() {
 		Start:   tl.getPos(len(tl.input)),
 		End:     tl.getPos(len(tl.input)),
 	})
+}
+
+func (tl *TemplateLexer) normalizeNewlines(value string) string {
+	replacer := strings.NewReplacer("\r\n", tl.config.NewlineSequence, "\r", tl.config.NewlineSequence, "\n", tl.config.NewlineSequence)
+	return replacer.Replace(value)
 }
 
 // normalizeAllNewlines handles \r\n and legacy \r, turning both into \n
