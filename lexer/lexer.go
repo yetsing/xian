@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/yetsing/xian/internal/token"
+	"github.com/yetsing/xian/token"
 )
 
 type LexerState struct {

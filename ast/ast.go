@@ -2,7 +2,7 @@ package ast
 
 import (
 	"github.com/yetsing/xian"
-	"github.com/yetsing/xian/internal/token"
+	"github.com/yetsing/xian/token"
 )
 
 // The Node interface
