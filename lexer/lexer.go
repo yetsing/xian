@@ -9,9 +9,11 @@ import (
 )
 
 type LexerState struct {
-	index    int
-	ch       rune
-	position token.Position
+	index        int
+	ch           rune
+	position     token.Position
+	markIndex    int
+	markPosition token.Position
 }
 
 type Lexer struct {
@@ -26,68 +28,25 @@ type Lexer struct {
 	ch rune
 	// ch 所在的行列(从 0 开始)
 	position token.Position
-
 	// 标记索引和位置，方便计算 Token 的 start end
 	markIndex    int
 	markPosition token.Position
 
-	// token 数组和索引，用来支持回溯
-	// 下一个 token 的索引
-	tokenIndex int
-	tokens     []token.Token
-
 	enableMultilineString bool
+
+	states []LexerState
 }
 
-func NewLexer(input string) *Lexer {
-	l := &Lexer{input: input, index: -1}
+func NewLexer(input string, enableMultilineString bool) *Lexer {
+	l := &Lexer{input: input, index: -1, enableMultilineString: enableMultilineString}
 	l.init()
 	l.readChar()
 	return l
 }
 
-func NewLexerWith(input string, enableMultilineString bool) *Lexer {
-	l := NewLexer(input)
-	l.enableMultilineString = enableMultilineString
-	return l
-}
-
-func (l *Lexer) GetLines() []string {
-	return strings.Split(l.input, "\n")
-}
-
-// Dump 读取当前 token 索引
-func (l *Lexer) Dump() int {
-	return l.tokenIndex
-}
-
-// Restore 恢复至指定 token 索引
-// 与 Dump 配合使用，可以在读取 token 之后进行撤销
-// 具体使用例子可看 parser/parser.go
-func (l *Lexer) Restore(index int) {
-	l.tokenIndex = index
-}
-
 // NextToken 获取下一个 token ，同时增加 token 索引
 func (l *Lexer) NextToken() token.Token {
-	tk := l.getToken(l.tokenIndex)
-	l.tokenIndex++
-	return tk
-}
-
-// PeekToken 查看下一个 token ，不增加 token 索引
-func (l *Lexer) PeekToken() token.Token {
-	return l.getToken(l.tokenIndex)
-}
-
-func (l *Lexer) getToken(index int) token.Token {
-	//    索引超出已读取范围，再次进行读取
-	if index >= len(l.tokens) {
-		tk := l.readToken()
-		l.tokens = append(l.tokens, tk)
-	}
-	//    索引没有超出已读取范围，直接取之前已经读取过的
-	return l.tokens[index]
+	return l.readToken()
 }
 
 func (l *Lexer) readToken() token.Token {
@@ -206,21 +165,30 @@ func (l *Lexer) init() {
 	l.ucodes = []rune(l.input)
 	l.position.Line = 0
 	l.position.Column = -1
-	l.tokenIndex = 0
 }
 
-func (l *Lexer) dumpState() LexerState {
-	return LexerState{
-		index:    l.index,
-		ch:       l.ch,
-		position: l.position,
+func (l *Lexer) save() {
+	l.states = append(l.states, LexerState{
+		index:        l.index,
+		ch:           l.ch,
+		position:     l.position,
+		markIndex:    l.markIndex,
+		markPosition: l.markPosition,
+	})
+}
+
+func (l *Lexer) restore() {
+	if len(l.states) == 0 {
+		panic("no saved state to restore")
 	}
-}
+	state := l.states[len(l.states)-1]
+	l.states = l.states[:len(l.states)-1]
 
-func (l *Lexer) restoreState(state LexerState) {
 	l.index = state.index
 	l.ch = state.ch
 	l.position = state.position
+	l.markIndex = state.markIndex
+	l.markPosition = state.markPosition
 }
 
 func (l *Lexer) skipWhitespace() {
@@ -302,35 +270,41 @@ func (l *Lexer) readIdentifier() token.Token {
 }
 
 func (l *Lexer) readNumber() token.Token {
-	state := l.dumpState()
+	l.save()
 	if tok, err := l.tryFloatnumber1(); err == nil {
 		return tok
 	}
-	l.restoreState(state)
+	l.restore()
+	l.save()
 	if tok, err := l.tryFloatnumber2(); err == nil {
 		return tok
 	}
-	l.restoreState(state)
+	l.restore()
+	l.save()
 	if tok, err := l.tryDecinteger(); err == nil {
 		return tok
 	}
-	l.restoreState(state)
+	l.restore()
+	l.save()
 	if tok, err := l.tryBininteger(); err == nil {
 		return tok
 	}
-	l.restoreState(state)
+	l.restore()
+	l.save()
 	if tok, err := l.tryOctinteger(); err == nil {
 		return tok
 	}
-	l.restoreState(state)
+	l.restore()
+	l.save()
 	if tok, err := l.tryHexinteger(); err == nil {
 		return tok
 	}
-	l.restoreState(state)
+	l.restore()
+	l.save()
 	if tok, err := l.tryZerointeger(); err == nil {
 		return tok
 	}
-	l.restoreState(state)
+	l.restore()
 
 	tok := l.buildToken(token.TOKEN_ILLEGAL)
 	tok.Literal = "invalid number"

@@ -50,11 +50,6 @@ type TemplateLexer struct {
 
 	positioner *token.LineColumnIndex
 
-	// 下一个 token 的索引
-	tokenIndex int
-	// 已经读取过的 token 数组
-	tokens []token.Token
-
 	ignoredTokens []token.TokenType
 	ignoreIfEmpty []token.TokenType
 }
@@ -66,8 +61,6 @@ func NewTemplateLexer(input string, config TemplateLexerConfig) *TemplateLexer {
 		config:       config,
 		segmentIndex: 0,
 		segments:     []token.Token{},
-		tokenIndex:   0,
-		tokens:       []token.Token{},
 		positioner:   nil,
 		ignoredTokens: []token.TokenType{
 			token.TOKEN_COMMENT_BEGIN,
@@ -93,33 +86,18 @@ func NewTemplateLexer(input string, config TemplateLexerConfig) *TemplateLexer {
 
 // NextToken 获取下一个 token ，同时增加 token 索引
 func (tl *TemplateLexer) NextToken() token.Token {
-	tk := tl.getToken(tl.tokenIndex)
-	tl.tokenIndex++
-	return tk
-}
-
-// PeekToken 查看下一个 token ，不增加 token 索引
-func (tl *TemplateLexer) PeekToken() token.Token {
-	return tl.getToken(tl.tokenIndex)
-}
-
-func (tl *TemplateLexer) getToken(index int) token.Token {
-	if index >= len(tl.tokens) {
-		// 索引超出已读取范围，再次进行读取
-		tk := tl.readToken()
-		ignored := false
-		for {
+	tk := tl.readToken()
+	ignored := false
+	for tk.Type != token.TOKEN_EOF {
+		tk, ignored = tl.convertToken(tk)
+		if ignored {
 			// 如果是需要忽略的 token ，继续读取下一个
-			tk, ignored = tl.convertToken(tk)
-			if ignored {
-				tk = tl.readToken()
-				continue
-			}
-			break
+			tk = tl.readToken()
+			continue
 		}
-		tl.tokens = append(tl.tokens, tk)
+		break
 	}
-	return tl.tokens[index]
+	return tk
 }
 
 func (tl *TemplateLexer) convertToken(tk token.Token) (token.Token, bool) {
@@ -190,7 +168,7 @@ BEGIN:
 	case token.TOKEN_STRING:
 		// 进入代码块，使用 codeLexer 进行词法分析
 		if tl.codeLexer == nil {
-			tl.codeLexer = NewLexerWith(segment.Literal, true)
+			tl.codeLexer = NewLexer(segment.Literal, true)
 		}
 		tk := tl.codeLexer.NextToken()
 		if tk.TypeIs(token.TOKEN_EOF) {
