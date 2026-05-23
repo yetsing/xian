@@ -265,7 +265,6 @@ func (l *Lexer) readIdentifier() token.Token {
 		l.readChar()
 	}
 	tok := l.buildToken(token.TOKEN_NAME)
-	tok.Type = token.LookupIdent(tok.Literal)
 	return tok
 }
 

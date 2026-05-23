@@ -6,6 +6,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/yetsing/xian/config"
 	"github.com/yetsing/xian/token"
 )
 
@@ -14,24 +15,6 @@ type CodeTag struct {
 	end       string
 	startType token.TokenType
 	endType   token.TokenType
-}
-
-type TemplateLexerConfig struct {
-	BlockStart    string
-	BlockEnd      string
-	VariableStart string
-	VariableEnd   string
-	CommentStart  string
-	CommentEnd    string
-
-	LineStatementPrefix string
-	LineCommentPrefix   string
-
-	TrimBlocks   bool
-	LstripBlocks bool
-
-	NewlineSequence     string
-	KeepTrailingNewline bool
 }
 
 type TemplateLexer struct {
@@ -43,7 +26,7 @@ type TemplateLexer struct {
 	codeStartToken token.Token
 	codeEndToken   token.Token
 
-	config TemplateLexerConfig
+	config config.Config
 
 	segmentIndex int
 	segments     []token.Token
@@ -54,11 +37,11 @@ type TemplateLexer struct {
 	ignoreIfEmpty []token.TokenType
 }
 
-func NewTemplateLexer(input string, config TemplateLexerConfig) *TemplateLexer {
+func NewTemplateLexer(input string, config *config.Config) *TemplateLexer {
 	tl := &TemplateLexer{
 		input:        input,
 		index:        0,
-		config:       config,
+		config:       *config,
 		segmentIndex: 0,
 		segments:     []token.Token{},
 		positioner:   nil,
@@ -196,9 +179,9 @@ func (tl *TemplateLexer) getPos(index int) token.Position {
 
 func (tl *TemplateLexer) initCodeTag() {
 	tl.codeTags = []CodeTag{
-		{start: tl.config.BlockStart, end: tl.config.BlockEnd, startType: token.TOKEN_BLOCK_BEGIN, endType: token.TOKEN_BLOCK_END},
-		{start: tl.config.VariableStart, end: tl.config.VariableEnd, startType: token.TOKEN_VARIABLE_BEGIN, endType: token.TOKEN_VARIABLE_END},
-		{start: tl.config.CommentStart, end: tl.config.CommentEnd, startType: token.TOKEN_COMMENT_BEGIN, endType: token.TOKEN_COMMENT_END},
+		{start: tl.config.BlockStartString, end: tl.config.BlockEndString, startType: token.TOKEN_BLOCK_BEGIN, endType: token.TOKEN_BLOCK_END},
+		{start: tl.config.VariableStartString, end: tl.config.VariableEndString, startType: token.TOKEN_VARIABLE_BEGIN, endType: token.TOKEN_VARIABLE_END},
+		{start: tl.config.CommentStartString, end: tl.config.CommentEndString, startType: token.TOKEN_COMMENT_BEGIN, endType: token.TOKEN_COMMENT_END},
 	}
 	if tl.config.LineStatementPrefix != "" {
 		tl.codeTags = append(tl.codeTags, CodeTag{start: tl.config.LineStatementPrefix, end: "\n", startType: token.TOKEN_LINESTATEMENT_BEGIN, endType: token.TOKEN_LINESTATEMENT_END})
@@ -422,7 +405,7 @@ func (tl *TemplateLexer) lstripBlocks(tk *token.Token, codeTag *CodeTag, stripSi
 	if stripSign == '-' {
 		// strip all whitespace before
 		tk.Literal = strings.TrimRightFunc(tk.Literal, unicode.IsSpace)
-	} else if stripSign != '+' && tl.config.LstripBlocks && codeTag.startType != token.TOKEN_VARIABLE_BEGIN {
+	} else if stripSign != '+' && tl.config.LeftStripBlocks && codeTag.startType != token.TOKEN_VARIABLE_BEGIN {
 		// strip whitespace from the beginning of a line to the start of a block
 		// Nothing will be stripped if there are other characters before the start of the block.
 		lastNewline := strings.LastIndex(tk.Literal, "\n")

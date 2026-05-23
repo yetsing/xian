@@ -1,23 +1,11 @@
 package token
 
+import "slices"
+
 type TokenType string
 
 const (
 	TOKEN_ILLEGAL = "illegal"
-
-	// Keywords
-	TOKEN_FOR        = "for"
-	TOKEN_IF         = "if"
-	TOKEN_BLOCK      = "block"
-	TOKEN_EXTENDS    = "extends"
-	TOKEN_PRINT      = "print"
-	TOKEN_MACRO      = "macro"
-	TOKEN_INCLUDE    = "include"
-	TOKEN_FROM       = "from"
-	TOKEN_IMPORT     = "import"
-	TOKEN_SET        = "set"
-	TOKEN_WITH       = "with"
-	TOKEN_AUTOESCAPE = "autoescape"
 
 	TOKEN_ADD                 = "add"       // "+"
 	TOKEN_ASSIGN              = "assign"    // "="
@@ -86,41 +74,20 @@ func (t *Token) TypeNotIs(ttype TokenType) bool {
 }
 
 func (t *Token) TypeIn(ttypes ...TokenType) bool {
-	for _, ttype := range ttypes {
-		if t.TypeIs(ttype) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(ttypes, t.TypeIs)
 }
 
 func (t *Token) LiteralIs(s string) bool {
 	return t.Literal == s
 }
 
-func (t *Token) IsKeyword() bool {
-	_, ok := keywords[t.Literal]
-	return ok
+func (t *Token) Is2(ttype TokenType, literal string) bool {
+	return t.TypeIs(ttype) && t.LiteralIs(literal)
 }
 
 func (t *Token) IsOperator() bool {
 	_, ok := operators[t.Literal]
 	return ok
-}
-
-var keywords = map[string]TokenType{
-	"for":        TOKEN_FOR,
-	"if":         TOKEN_IF,
-	"block":      TOKEN_BLOCK,
-	"extends":    TOKEN_EXTENDS,
-	"print":      TOKEN_PRINT,
-	"macro":      TOKEN_MACRO,
-	"include":    TOKEN_INCLUDE,
-	"from":       TOKEN_FROM,
-	"import":     TOKEN_IMPORT,
-	"set":        TOKEN_SET,
-	"with":       TOKEN_WITH,
-	"autoescape": TOKEN_AUTOESCAPE,
 }
 
 var operators = map[string]TokenType{
@@ -150,12 +117,4 @@ var operators = map[string]TokenType{
 	"|":  TOKEN_PIPE,
 	",":  TOKEN_COMMA,
 	";":  TOKEN_SEMICOLON,
-}
-
-// LookupIdent 确定 ident 是否关键字
-func LookupIdent(ident string) TokenType {
-	if tok, ok := keywords[ident]; ok {
-		return tok
-	}
-	return TOKEN_NAME
 }
