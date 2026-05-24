@@ -154,13 +154,13 @@ func (c *Const) expressionNode() {}
 func (c *Const) literalNode()    {}
 
 func (c *Const) String() string {
-	return fmt.Sprintf("nodes.Const(value=%s)", c.Value)
+	return fmt.Sprintf("nodes.Const(value=%s)", reprAny(c.Value))
 }
 
 func (c *Const) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Const(")
-	fmt.Fprintf(sb, "  value=%s,\n", c.Value)
+	fmt.Fprintf(sb, "  value=%s,\n", reprAny(c.Value))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -231,7 +231,7 @@ func (t *Tuple) String() string {
 func (t *Tuple) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Tuple(")
-	sb.WriteExpressionList("item", t.Items)
+	sb.WriteExpressionList("items", t.Items)
 	sb.WriteIndent()
 	fmt.Fprintf(sb, "  ctx=%s,\n", reprString(t.Ctx))
 	sb.WriteIndent()
@@ -273,7 +273,7 @@ func (l *List) String() string {
 func (l *List) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.List(")
-	sb.WriteExpressionList("item", l.Items)
+	sb.WriteExpressionList("items", l.Items)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -365,11 +365,11 @@ func (ce *CondExpr) String() string {
 func (ce *CondExpr) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.CondExpr(")
-	fmt.Fprintf(sb, "  test=%s,\n", ce.Test)
+	fmt.Fprintf(sb, "  test=%s,\n", safeDumps(ce.Test, indent+1))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  expr1=%s,\n", ce.Expr1)
+	fmt.Fprintf(sb, "  expr1=%s,\n", safeDumps(ce.Expr1, indent+1))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  expr2=%s,\n", ce.Expr2)
+	fmt.Fprintf(sb, "  expr2=%s,\n", safeDumps(ce.Expr2, indent+1))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -450,7 +450,7 @@ func (f *Filter) Dumps(indent int) string {
 
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Filter(")
-	fmt.Fprintf(sb, "  node=%s,\n", f.Node)
+	fmt.Fprintf(sb, "  node=%s,\n", safeDumps(f.Node, indent+1))
 	sb.WriteIndent()
 	fmt.Fprintf(sb, "  name=%s,\n", reprString(f.Name))
 	sb.WriteIndent()
@@ -458,9 +458,9 @@ func (f *Filter) Dumps(indent int) string {
 	sb.WriteIndent()
 	sb.WriteNodeList("kwargs", kwargs)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  dyn_args=%s,\n", f.DynArgs)
+	fmt.Fprintf(sb, "  dyn_args=%s,\n", safeDumps(f.DynArgs, indent+1))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  dyn_kwargs=%s,\n", f.DynKwargs)
+	fmt.Fprintf(sb, "  dyn_kwargs=%s,\n", safeDumps(f.DynKwargs, indent+1))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -501,7 +501,7 @@ func (t *Test) Dumps(indent int) string {
 
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Test(")
-	fmt.Fprintf(sb, "  node=%s,\n", t.Node)
+	fmt.Fprintf(sb, "  node=%s,\n", safeDumps(t.Node, indent+1))
 	sb.WriteIndent()
 	fmt.Fprintf(sb, "  name=%s,\n", reprString(t.Name))
 	sb.WriteIndent()
@@ -509,9 +509,9 @@ func (t *Test) Dumps(indent int) string {
 	sb.WriteIndent()
 	sb.WriteNodeList("kwargs", kwargs)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  dyn_args=%s,\n", t.DynArgs)
+	fmt.Fprintf(sb, "  dyn_args=%s,\n", safeDumps(t.DynArgs, indent+1))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  dyn_kwargs=%s,\n", t.DynKwargs)
+	fmt.Fprintf(sb, "  dyn_kwargs=%s,\n", safeDumps(t.DynKwargs, indent+1))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -556,15 +556,15 @@ func (c *Call) Dumps(indent int) string {
 
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Call(")
-	fmt.Fprintf(sb, "  node=%s,\n", c.Node)
+	fmt.Fprintf(sb, "  node=%s,\n", safeDumps(c.Node, indent+1))
 	sb.WriteIndent()
 	sb.WriteExpressionList("args", c.Args)
 	sb.WriteIndent()
 	sb.WriteNodeList("kwargs", kwargs)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  dyn_args=%s,\n", c.DynArgs)
+	fmt.Fprintf(sb, "  dyn_args=%s,\n", safeDumps(c.DynArgs, indent+1))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  dyn_kwargs=%s,\n", c.DynKwargs)
+	fmt.Fprintf(sb, "  dyn_kwargs=%s,\n", safeDumps(c.DynKwargs, indent+1))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -615,9 +615,9 @@ func (gi *Getitem) String() string {
 func (gi *Getitem) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Getitem(")
-	fmt.Fprintf(sb, "  node=%s,\n", gi.Node)
+	fmt.Fprintf(sb, "  node=%s,\n", safeDumps(gi.Node, indent+1))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  arg=%s,\n", gi.Arg)
+	fmt.Fprintf(sb, "  arg=%s,\n", safeDumps(gi.Arg, indent+1))
 	sb.WriteIndent()
 	fmt.Fprintf(sb, "  ctx=%s,\n", reprString(gi.Ctx))
 	sb.WriteIndent()
@@ -659,7 +659,7 @@ func (ga *Getattr) String() string {
 func (ga *Getattr) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Getattr(")
-	fmt.Fprintf(sb, "  node=%s,\n", ga.Node)
+	fmt.Fprintf(sb, "  node=%s,\n", safeDumps(ga.Node, indent+1))
 	sb.WriteIndent()
 	fmt.Fprintf(sb, "  attr=%s,\n", reprString(ga.Attr))
 	sb.WriteIndent()
@@ -702,11 +702,11 @@ func (s *Slice) String() string {
 func (s *Slice) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Slice(")
-	fmt.Fprintf(sb, "  start=%s,\n", s.Start)
+	fmt.Fprintf(sb, "  start=%s,\n", safeDumps(s.Start, indent+1))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  stop=%s,\n", s.Stop)
+	fmt.Fprintf(sb, "  stop=%s,\n", safeDumps(s.Stop, indent+1))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  step=%s,\n", s.Step)
+	fmt.Fprintf(sb, "  step=%s,\n", safeDumps(s.Step, indent+1))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -723,12 +723,12 @@ func (s *Slice) ChildNodes() []ChildNode {
 type Concat struct {
 	BaseNode
 
-	Items []Expression
+	Nodes []Expression
 }
 
-func NewConcat(token token.Token, items []Expression) *Concat {
+func NewConcat(token token.Token, nodes []Expression) *Concat {
 	c := &Concat{
-		Items: items,
+		Nodes: nodes,
 	}
 	c.BaseNode = NewBaseNode(token)
 	return c
@@ -737,25 +737,25 @@ func NewConcat(token token.Token, items []Expression) *Concat {
 func (c *Concat) expressionNode() {}
 
 func (c *Concat) String() string {
-	return fmt.Sprintf("nodes.Concat(items=%s)", reprExpressionList(c.Items))
+	return fmt.Sprintf("nodes.Concat(nodes=%s)", reprExpressionList(c.Nodes))
 }
 
 func (c *Concat) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Concat(")
-	sb.WriteExpressionList("items", c.Items)
+	sb.WriteExpressionList("nodes", c.Nodes)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
 }
 
 func (c *Concat) ChildNodes() []ChildNode {
-	items := make([]Node, len(c.Items))
-	for i := range c.Items {
-		items[i] = c.Items[i]
+	nodes := make([]Node, len(c.Nodes))
+	for i := range c.Nodes {
+		nodes[i] = c.Nodes[i]
 	}
 	return []ChildNode{
-		{Name: "items", Values: items},
+		{Name: "nodes", Values: nodes},
 	}
 }
 
@@ -792,7 +792,7 @@ func (c *Compare) Dumps(indent int) string {
 
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Compare(")
-	fmt.Fprintf(sb, "  expr=%s,\n", c.Expr)
+	fmt.Fprintf(sb, "  expr=%s,\n", safeDumps(c.Expr, indent+1))
 	sb.WriteIndent()
 	sb.WriteNodeList("ops", ops)
 	sb.WriteIndent()
@@ -818,9 +818,9 @@ func stringBinExpr(name string, be *BinExpr) string {
 func dumpsBinExpr(name string, be *BinExpr, indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent(fmt.Sprintf("nodes.%s(", name))
-	fmt.Fprintf(sb, "  left=%s,\n", be.Left)
+	fmt.Fprintf(sb, "  left=%s,\n", safeDumps(be.Left, indent+1))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  right=%s,\n", be.Right)
+	fmt.Fprintf(sb, "  right=%s,\n", safeDumps(be.Right, indent+1))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -833,7 +833,7 @@ func stringUnaryExpr(name string, ue *UnaryExpr) string {
 func dumpsUnaryExpr(name string, ue *UnaryExpr, indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent(fmt.Sprintf("nodes.%s(", name))
-	fmt.Fprintf(sb, "  node=%s,\n", ue.Node)
+	fmt.Fprintf(sb, "  node=%s,\n", safeDumps(ue.Node, indent+1))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -1250,7 +1250,7 @@ func (ms *MarkSafe) String() string {
 func (ms *MarkSafe) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.MarkSafe(")
-	fmt.Fprintf(sb, "  expr=%s,\n", ms.Expr)
+	fmt.Fprintf(sb, "  expr=%s,\n", safeDumps(ms.Expr, indent+1))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -1284,7 +1284,7 @@ func (ms *MarkSafeIfAutoescape) String() string {
 func (ms *MarkSafeIfAutoescape) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.MarkSafeIfAutoescape(")
-	fmt.Fprintf(sb, "  expr=%s,\n", ms.Expr)
+	fmt.Fprintf(sb, "  expr=%s,\n", safeDumps(ms.Expr, indent+1))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()

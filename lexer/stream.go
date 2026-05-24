@@ -1,10 +1,8 @@
 package lexer
 
 import (
-	"fmt"
 	"slices"
 
-	"github.com/yetsing/xian/templateerror"
 	"github.com/yetsing/xian/token"
 )
 
@@ -13,9 +11,7 @@ type LexerInterface interface {
 }
 
 type TokenStream struct {
-	lexer    LexerInterface
-	name     string
-	filename string
+	lexer LexerInterface
 
 	current token.Token
 
@@ -23,11 +19,9 @@ type TokenStream struct {
 	tokens     []token.Token
 }
 
-func NewTokenStream(lexer LexerInterface, name string, filename string) *TokenStream {
+func NewTokenStream(lexer LexerInterface) *TokenStream {
 	ts := &TokenStream{
-		lexer:    lexer,
-		name:     name,
-		filename: filename,
+		lexer: lexer,
 		current: token.Token{
 			Type:    token.TOKEN_INITIAL,
 			Literal: "",
@@ -84,38 +78,6 @@ func (ts *TokenStream) SkipIf2(ttype token.TokenType, literal string) bool {
 	return ok
 }
 
-func (ts *TokenStream) Expect1(ttype token.TokenType) (token.Token, error) {
-	return ts.Expect2(ttype, "")
-}
-
-func (ts *TokenStream) Expect2(ttype token.TokenType, literal string) (token.Token, error) {
-	if ts.current.Test(token.Token{Type: ttype, Literal: literal}) {
-		return ts.Next(), nil
-	}
-	if ts.current.Type == token.TOKEN_ILLEGAL {
-		return token.Token{}, templateerror.NewTemplateSyntaxError(
-			ts.current.Literal,
-			ts.current.Start.Line,
-			ts.name,
-			ts.filename,
-		)
-	}
-	if ts.current.Type == token.TOKEN_EOF {
-		return token.Token{}, templateerror.NewTemplateSyntaxError(
-			fmt.Sprintf("unexpected end of template, expected %q", ttype),
-			ts.current.Start.Line,
-			ts.name,
-			ts.filename,
-		)
-	}
-	return token.Token{}, templateerror.NewTemplateSyntaxError(
-		fmt.Sprintf("expected token %q, got %q", ttype, ts.current.Type),
-		ts.current.Start.Line,
-		ts.name,
-		ts.filename,
-	)
-}
-
 func (ts *TokenStream) CurrentEqual1(ttype token.TokenType) bool {
 	return ts.current.Type == ttype
 }
@@ -142,6 +104,10 @@ func (ts *TokenStream) CurrentLiteralIn(literals ...string) bool {
 
 func (ts *TokenStream) CurrentTestAny(toks ...token.Token) bool {
 	return ts.current.TestAny(toks...)
+}
+
+func (ts *TokenStream) CurrentNotTestAny(toks ...token.Token) bool {
+	return !ts.current.TestAny(toks...)
 }
 
 func (ts *TokenStream) PeekEqual1(ttype token.TokenType) bool {

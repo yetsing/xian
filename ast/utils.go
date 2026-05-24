@@ -2,6 +2,9 @@ package ast
 
 import (
 	"fmt"
+	"math"
+	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -46,39 +49,34 @@ func reprString(s string) string {
 	return "'" + cs + "'"
 }
 
-// func dumpsNodeList(sb *strings.Builder, name string, nodes []Node, indent int) {
-// 	sb.WriteString(strings.Repeat("  ", indent))
-// 	if len(nodes) == 0 {
-// 		fmt.Fprintf(sb, "  %s=[]\n", name)
-// 	} else {
-// 		fmt.Fprintf(sb, "  %s=[\n", name)
-// 		for i, node := range nodes {
-// 			sb.WriteString(node.Dumps(indent + 2))
-// 			if i < len(nodes)-1 {
-// 				sb.WriteString(",\n")
-// 			}
-// 		}
-// 		sb.WriteString(strings.Repeat("  ", indent))
-// 		sb.WriteString("  ]\n")
-// 	}
-// }
+func reprFloat64(f float64) string {
+	// 检查是否为整数
+	if f == float64(int64(f)) {
+		return fmt.Sprintf("%.1f", f) // Python 会显示 .0
+	}
 
-// func dumpsExpressionList(sb *strings.Builder, name string, nodes []Expression, indent int) {
-// 	sb.WriteString(strings.Repeat("  ", indent))
-// 	if len(nodes) == 0 {
-// 		fmt.Fprintf(sb, "  %s=[]\n", name)
-// 	} else {
-// 		fmt.Fprintf(sb, "  %s=[\n", name)
-// 		for i, node := range nodes {
-// 			sb.WriteString(node.Dumps(indent + 2))
-// 			if i < len(nodes)-1 {
-// 				sb.WriteString(",\n")
-// 			}
-// 		}
-// 		sb.WriteString(strings.Repeat("  ", indent))
-// 		sb.WriteString("  ]\n")
-// 	}
-// }
+	// 检查是否需要用科学计数法
+	abs := math.Abs(f)
+	if (abs > 0 && abs < 0.0001) || abs >= 1e6 {
+		// 使用科学计数法，但格式要像 Python
+		return strconv.FormatFloat(f, 'e', -1, 64)
+	}
+
+	// 使用 %g，但去除尾随的 .0
+	s := strconv.FormatFloat(f, 'f', -1, 64)
+	return s
+}
+
+func reprAny(v any) string {
+	switch vv := v.(type) {
+	case string:
+		return reprString(vv)
+	case float64:
+		return reprFloat64(vv)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
 
 type iStringBuilder struct {
 	strings.Builder
@@ -185,4 +183,25 @@ func SetCtx(node Node, ctx string) {
 		}
 
 	}
+}
+
+func isNil(i interface{}) bool {
+	if i == nil {
+		return true
+	}
+
+	vi := reflect.ValueOf(i)
+	// 只有指针、通道、函数、接口、切片、映射等类型才能调用 IsNil
+	switch vi.Kind() {
+	case reflect.Ptr, reflect.Map, reflect.Chan, reflect.Func, reflect.Slice, reflect.Interface:
+		return vi.IsNil()
+	}
+	return false
+}
+
+func safeDumps(node Node, indent int) string {
+	if isNil(node) {
+		return "none" // Python 中的 None
+	}
+	return node.Dumps(indent)
 }

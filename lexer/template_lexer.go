@@ -108,6 +108,19 @@ func (tl *TemplateLexer) convertToken(tk token.Token) (token.Token, bool) {
 		}
 		// remove the quotes and unescape the string literal
 		literal := tk.Literal[1 : len(tk.Literal)-1]
+		if tk.Literal[0] == '\'' {
+			// 转义双引号
+			var sb strings.Builder
+			backslash := false
+			for _, ch := range literal {
+				if ch == '"' && !backslash {
+					sb.WriteRune('\\')
+				}
+				sb.WriteRune(ch)
+				backslash = ch == '\\' && !backslash
+			}
+			literal = sb.String()
+		}
 		// Unquote 不支持多行双引号字符串，因此分行 Unquote
 		lines := strings.Split(literal, "\n")
 		for i, line := range lines {

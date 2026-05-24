@@ -19,21 +19,6 @@ func _t2(ttype token.TokenType, literal string) token.Token {
 	return token.Token{Type: ttype, Literal: literal}
 }
 
-var statementKeywords = map[string]struct{}{
-	"for":        {},
-	"if":         {},
-	"block":      {},
-	"extends":    {},
-	"print":      {},
-	"macro":      {},
-	"include":    {},
-	"from":       {},
-	"import":     {},
-	"set":        {},
-	"with":       {},
-	"autoescape": {},
-}
-
 type Parser struct {
 	stream   *lexer.TokenStream
 	name     string
@@ -65,6 +50,39 @@ func (p *Parser) Parse() (ast.Template, error) {
 		BaseNode: ast.NewBaseNode(tok),
 		Body:     body,
 	}, nil
+}
+
+func (p *Parser) expect1(ttype token.TokenType) (token.Token, error) {
+	return p.expect2(ttype, "")
+}
+
+func (p *Parser) expect2(ttype token.TokenType, literal string) (token.Token, error) {
+	tok := p.stream.Current()
+	if tok.Test(token.Token{Type: ttype, Literal: literal}) {
+		return p.stream.Next(), nil
+	}
+	if tok.Type == token.TOKEN_ILLEGAL {
+		return token.Token{}, templateerror.NewTemplateSyntaxError(
+			tok.Literal,
+			tok.Start.Line,
+			p.name,
+			p.filename,
+		)
+	}
+	if tok.Type == token.TOKEN_EOF {
+		return token.Token{}, templateerror.NewTemplateSyntaxError(
+			fmt.Sprintf("unexpected end of template, expected %q", ttype),
+			tok.Start.Line,
+			p.name,
+			p.filename,
+		)
+	}
+	return token.Token{}, templateerror.NewTemplateSyntaxError(
+		fmt.Sprintf("expected token %q, got %q", ttype, tok.Type),
+		tok.Start.Line,
+		p.name,
+		p.filename,
+	)
 }
 
 func (p *Parser) fail(msg string, tok token.Token) error {
@@ -141,7 +159,7 @@ func (p *Parser) parseStatement() (ast.Node, error) {
 func (p *Parser) parseStatements(endTokens []token.Token, dropNeedle bool) ([]ast.Node, error) {
 	p.stream.SkipIf1(token.TOKEN_COLON)
 
-	if _, err := p.stream.Expect1(token.TOKEN_BLOCK_END); err != nil {
+	if _, err := p.expect1(token.TOKEN_BLOCK_END); err != nil {
 		return nil, err
 	}
 
@@ -178,9 +196,13 @@ func (p *Parser) parseSet() (ast.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	filterNode, ok := filterNodeExpr.(*ast.Filter)
-	if !ok {
-		return nil, p.fail("expected filter expression", filterNodeExpr.Token())
+	var filterNode *ast.Filter
+	if filterNodeExpr != nil {
+		var ok bool
+		filterNode, ok = filterNodeExpr.(*ast.Filter)
+		if !ok {
+			return nil, p.fail("expected filter expression", filterNodeExpr.Token())
+		}
 	}
 	body, err := p.parseStatements([]token.Token{_t2(token.TOKEN_NAME, "endset")}, true)
 	if err != nil {
@@ -190,7 +212,7 @@ func (p *Parser) parseSet() (ast.Node, error) {
 }
 
 func (p *Parser) parseFor() (ast.Node, error) {
-	tok, err := p.stream.Expect2(token.TOKEN_NAME, "for")
+	tok, err := p.expect2(token.TOKEN_NAME, "for")
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +220,7 @@ func (p *Parser) parseFor() (ast.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.stream.Expect2(token.TOKEN_NAME, "in"); err != nil {
+	if _, err := p.expect2(token.TOKEN_NAME, "in"); err != nil {
 		return nil, err
 	}
 	iter, err := p.parseTuple(false, false, []token.Token{_t2(token.TOKEN_NAME, "recursive")}, false, false)
@@ -230,7 +252,7 @@ func (p *Parser) parseFor() (ast.Node, error) {
 }
 
 func (p *Parser) parseIf() (ast.Node, error) {
-	tok, err := p.stream.Expect2(token.TOKEN_NAME, "if")
+	tok, err := p.expect2(token.TOKEN_NAME, "if")
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +290,7 @@ func (p *Parser) parseWith() (ast.Node, error) {
 	values := []ast.Expression{}
 	for p.stream.CurrentNotEqual1(token.TOKEN_BLOCK_END) {
 		if len(targets) > 0 {
-			if _, err := p.stream.Expect1(token.TOKEN_COMMA); err != nil {
+			if _, err := p.expect1(token.TOKEN_COMMA); err != nil {
 				return nil, err
 			}
 		}
@@ -278,7 +300,7 @@ func (p *Parser) parseWith() (ast.Node, error) {
 		}
 		ast.SetCtx(target, ast.ExprContextParam)
 		targets = append(targets, target)
-		if _, err := p.stream.Expect1(token.TOKEN_ASSIGN); err != nil {
+		if _, err := p.expect1(token.TOKEN_ASSIGN); err != nil {
 			return nil, err
 		}
 		value, err := p.parseExpression(true)
@@ -311,7 +333,7 @@ func (p *Parser) parseAutoescape() (ast.Node, error) {
 
 func (p *Parser) parseBlock() (ast.Node, error) {
 	node := ast.NewBlock(p.stream.Next(), "", nil, false, false)
-	t, err := p.stream.Expect1(token.TOKEN_NAME)
+	t, err := p.expect1(token.TOKEN_NAME)
 	if err != nil {
 		return nil, err
 	}
@@ -396,7 +418,7 @@ func (p *Parser) parseImport() (ast.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.stream.Expect2(token.TOKEN_NAME, "as"); err != nil {
+	if _, err := p.expect2(token.TOKEN_NAME, "as"); err != nil {
 		return nil, err
 	}
 	targetNode, err := p.parseAssignTarget(true, true, nil, false)
@@ -420,7 +442,7 @@ func (p *Parser) parseFrom() (ast.Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.stream.Expect2(token.TOKEN_NAME, "import"); err != nil {
+	if _, err := p.expect2(token.TOKEN_NAME, "import"); err != nil {
 		return nil, err
 	}
 	names := []string{}
@@ -439,7 +461,7 @@ func (p *Parser) parseFrom() (ast.Node, error) {
 
 	for {
 		if len(names) > 0 {
-			if _, err := p.stream.Expect1(token.TOKEN_COMMA); err != nil {
+			if _, err := p.expect1(token.TOKEN_COMMA); err != nil {
 				return nil, err
 			}
 		}
@@ -479,7 +501,7 @@ func (p *Parser) parseFrom() (ast.Node, error) {
 				break
 			}
 		} else {
-			if _, err := p.stream.Expect1(token.TOKEN_NAME); err != nil {
+			if _, err := p.expect1(token.TOKEN_NAME); err != nil {
 				return nil, err
 			}
 		}
@@ -489,14 +511,14 @@ func (p *Parser) parseFrom() (ast.Node, error) {
 }
 
 func (p *Parser) parseSignature() ([]*ast.Name, []ast.Expression, error) {
-	if _, err := p.stream.Expect1(token.TOKEN_LPAREN); err != nil {
+	if _, err := p.expect1(token.TOKEN_LPAREN); err != nil {
 		return nil, nil, err
 	}
 	args := []*ast.Name{}
 	defaults := []ast.Expression{}
 	for p.stream.CurrentNotEqual1(token.TOKEN_RPAREN) {
 		if len(args) > 0 {
-			if _, err := p.stream.Expect1(token.TOKEN_COMMA); err != nil {
+			if _, err := p.expect1(token.TOKEN_COMMA); err != nil {
 				return nil, nil, err
 			}
 		}
@@ -520,7 +542,7 @@ func (p *Parser) parseSignature() ([]*ast.Name, []ast.Expression, error) {
 		}
 		args = append(args, arg)
 	}
-	if _, err := p.stream.Expect1(token.TOKEN_RPAREN); err != nil {
+	if _, err := p.expect1(token.TOKEN_RPAREN); err != nil {
 		return nil, nil, err
 	}
 	return args, defaults, nil
@@ -599,7 +621,7 @@ func (p *Parser) parsePrint() (ast.Node, error) {
 	nodes := []ast.Expression{}
 	for p.stream.CurrentNotEqual1(token.TOKEN_BLOCK_END) {
 		if len(nodes) > 0 {
-			_, err := p.stream.Expect1(token.TOKEN_COMMA)
+			_, err := p.expect1(token.TOKEN_COMMA)
 			if err != nil {
 				return nil, err
 			}
@@ -617,7 +639,7 @@ func (p *Parser) parseAssignTarget(withTuple bool, nameOnly bool, extraEndRules 
 	var target ast.Expression
 	var err error
 	if nameOnly {
-		tok, err := p.stream.Expect1(token.TOKEN_NAME)
+		tok, err := p.expect1(token.TOKEN_NAME)
 		if err != nil {
 			return nil, err
 		}
@@ -896,7 +918,7 @@ func (p *Parser) parsePrimary(withNamespace bool) (ast.Expression, error) {
 		default:
 			if withNamespace && p.stream.CurrentEqual1(token.TOKEN_DOT) {
 				p.stream.Next()
-				attr, err := p.stream.Expect1(token.TOKEN_NAME)
+				attr, err := p.expect1(token.TOKEN_NAME)
 				if err != nil {
 					return nil, err
 				}
@@ -936,7 +958,7 @@ func (p *Parser) parsePrimary(withNamespace bool) (ast.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
-		if _, err := p.stream.Expect1(token.TOKEN_RPAREN); err != nil {
+		if _, err := p.expect1(token.TOKEN_RPAREN); err != nil {
 			return nil, err
 		}
 		return node, nil
@@ -946,6 +968,9 @@ func (p *Parser) parsePrimary(withNamespace bool) (ast.Expression, error) {
 	}
 	if tok.Type == token.TOKEN_LBRACE {
 		return p.parseDict()
+	}
+	if tok.Type == token.TOKEN_ILLEGAL {
+		return nil, p.fail(tok.Literal, tok)
 	}
 	return nil, p.failtf(tok, "unexpected token %q", tok.Type)
 }
@@ -968,7 +993,7 @@ func (p *Parser) parseTuple(simplified bool, withCondexpr bool, extraEndRules []
 
 	for {
 		if len(args) > 0 {
-			if _, err := p.stream.Expect1(token.TOKEN_COMMA); err != nil {
+			if _, err := p.expect1(token.TOKEN_COMMA); err != nil {
 				return nil, err
 			}
 		}
@@ -1000,14 +1025,14 @@ func (p *Parser) parseTuple(simplified bool, withCondexpr bool, extraEndRules []
 }
 
 func (p *Parser) parseList() (ast.Expression, error) {
-	tok, err := p.stream.Expect1(token.TOKEN_LBRACKET)
+	tok, err := p.expect1(token.TOKEN_LBRACKET)
 	if err != nil {
 		return nil, err
 	}
 	items := []ast.Expression{}
 	for p.stream.CurrentNotEqual1(token.TOKEN_RBRACKET) {
 		if len(items) > 0 {
-			if _, err := p.stream.Expect1(token.TOKEN_COMMA); err != nil {
+			if _, err := p.expect1(token.TOKEN_COMMA); err != nil {
 				return nil, err
 			}
 		}
@@ -1020,21 +1045,21 @@ func (p *Parser) parseList() (ast.Expression, error) {
 		}
 		items = append(items, item)
 	}
-	if _, err := p.stream.Expect1(token.TOKEN_RBRACKET); err != nil {
+	if _, err := p.expect1(token.TOKEN_RBRACKET); err != nil {
 		return nil, err
 	}
 	return ast.NewList(tok, items), nil
 }
 
 func (p *Parser) parseDict() (ast.Expression, error) {
-	tok, err := p.stream.Expect1(token.TOKEN_LBRACE)
+	tok, err := p.expect1(token.TOKEN_LBRACE)
 	if err != nil {
 		return nil, err
 	}
 	items := []*ast.Pair{}
 	for p.stream.CurrentNotEqual1(token.TOKEN_RBRACE) {
 		if len(items) > 0 {
-			if _, err := p.stream.Expect1(token.TOKEN_COMMA); err != nil {
+			if _, err := p.expect1(token.TOKEN_COMMA); err != nil {
 				return nil, err
 			}
 		}
@@ -1045,7 +1070,7 @@ func (p *Parser) parseDict() (ast.Expression, error) {
 		if err != nil {
 			return nil, err
 		}
-		if _, err := p.stream.Expect1(token.TOKEN_COLON); err != nil {
+		if _, err := p.expect1(token.TOKEN_COLON); err != nil {
 			return nil, err
 		}
 		value, err := p.parseExpression(true)
@@ -1054,7 +1079,7 @@ func (p *Parser) parseDict() (ast.Expression, error) {
 		}
 		items = append(items, ast.NewPair(key.Token(), key, value))
 	}
-	if _, err := p.stream.Expect1(token.TOKEN_RBRACE); err != nil {
+	if _, err := p.expect1(token.TOKEN_RBRACE); err != nil {
 		return nil, err
 	}
 	return ast.NewDict(tok, items), nil
@@ -1131,7 +1156,7 @@ func (p *Parser) parseSubscript(node ast.Expression) (ast.Expression, error) {
 		args := []ast.Expression{}
 		for p.stream.CurrentNotEqual1(token.TOKEN_RBRACKET) {
 			if len(args) > 0 {
-				if _, err := p.stream.Expect1(token.TOKEN_COMMA); err != nil {
+				if _, err := p.expect1(token.TOKEN_COMMA); err != nil {
 					return nil, err
 				}
 			}
@@ -1140,6 +1165,9 @@ func (p *Parser) parseSubscript(node ast.Expression) (ast.Expression, error) {
 				return nil, err
 			}
 			args = append(args, val)
+		}
+		if _, err := p.expect1(token.TOKEN_RBRACKET); err != nil {
+			return nil, err
 		}
 		if len(args) == 1 {
 			arg = args[0]
@@ -1201,7 +1229,7 @@ func (p *Parser) parseSubscribed() (ast.Expression, error) {
 }
 
 func (p *Parser) parseCallArgs() ([]ast.Expression, []*ast.Keyword, ast.Expression, ast.Expression, error) {
-	tok, err := p.stream.Expect1(token.TOKEN_LPAREN)
+	tok, err := p.expect1(token.TOKEN_LPAREN)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -1221,7 +1249,7 @@ func (p *Parser) parseCallArgs() ([]ast.Expression, []*ast.Keyword, ast.Expressi
 
 	for p.stream.CurrentNotEqual1(token.TOKEN_RPAREN) {
 		if requireComma {
-			if _, err := p.stream.Expect1(token.TOKEN_COMMA); err != nil {
+			if _, err := p.expect1(token.TOKEN_COMMA); err != nil {
 				return nil, nil, nil, nil, err
 			}
 
@@ -1278,7 +1306,7 @@ func (p *Parser) parseCallArgs() ([]ast.Expression, []*ast.Keyword, ast.Expressi
 		requireComma = true
 	}
 
-	if _, err := p.stream.Expect1(token.TOKEN_RPAREN); err != nil {
+	if _, err := p.expect1(token.TOKEN_RPAREN); err != nil {
 		return nil, nil, nil, nil, err
 	}
 	return args, kwargs, dynArgs, dynKwargs, nil
@@ -1298,14 +1326,14 @@ func (p *Parser) parseFilter(node ast.Expression, startInline bool) (ast.Express
 		if !startInline {
 			p.stream.Next()
 		}
-		tok, err := p.stream.Expect1(token.TOKEN_NAME)
+		tok, err := p.expect1(token.TOKEN_NAME)
 		if err != nil {
 			return nil, err
 		}
 		name := tok.Literal
 		for p.stream.CurrentEqual1(token.TOKEN_DOT) {
 			p.stream.Next()
-			cur, err := p.stream.Expect1(token.TOKEN_NAME)
+			cur, err := p.expect1(token.TOKEN_NAME)
 			if err != nil {
 				return nil, err
 			}
@@ -1338,14 +1366,14 @@ func (p *Parser) parseTest(node ast.Expression) (ast.Expression, error) {
 		p.stream.Next()
 		negated = true
 	}
-	cur, err := p.stream.Expect1(token.TOKEN_NAME)
+	cur, err := p.expect1(token.TOKEN_NAME)
 	if err != nil {
 		return nil, err
 	}
 	name := cur.Literal
 	for p.stream.CurrentEqual1(token.TOKEN_DOT) {
 		p.stream.Next()
-		cur, err = p.stream.Expect1(token.TOKEN_NAME)
+		cur, err = p.expect1(token.TOKEN_NAME)
 		if err != nil {
 			return nil, err
 		}
@@ -1370,7 +1398,7 @@ func (p *Parser) parseTest(node ast.Expression) (ast.Expression, error) {
 		token.TOKEN_LPAREN,
 		token.TOKEN_LBRACKET,
 		token.TOKEN_LBRACE,
-	) && p.stream.CurrentTestAny(_t2(token.TOKEN_NAME, "else"), _t2(token.TOKEN_PIPE, "or"), _t2(token.TOKEN_PIPE, "and")) {
+	) && p.stream.CurrentNotTestAny(_t2(token.TOKEN_NAME, "else"), _t2(token.TOKEN_NAME, "or"), _t2(token.TOKEN_NAME, "and")) {
 		if p.stream.CurrentEqual2(token.TOKEN_NAME, "is") {
 			return nil, p.fail("You cannot chain multiple tests with is", p.stream.Current())
 		}
@@ -1428,7 +1456,7 @@ func (p *Parser) subparse(endTokens []token.Token) ([]ast.Node, error) {
 				return nil, err
 			}
 			addData(expr)
-			if _, err := p.stream.Expect1(token.TOKEN_VARIABLE_END); err != nil {
+			if _, err := p.expect1(token.TOKEN_VARIABLE_END); err != nil {
 				return nil, err
 			}
 		case token.TOKEN_BLOCK_BEGIN:
@@ -1442,7 +1470,7 @@ func (p *Parser) subparse(endTokens []token.Token) ([]ast.Node, error) {
 				return nil, err
 			}
 			body = append(body, rv)
-			if _, err := p.stream.Expect1(token.TOKEN_BLOCK_END); err != nil {
+			if _, err := p.expect1(token.TOKEN_BLOCK_END); err != nil {
 				return nil, err
 			}
 		default:

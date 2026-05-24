@@ -66,13 +66,13 @@ func NewExtends(token token.Token, template Expression) *Extends {
 func (e *Extends) statementNode() {}
 
 func (e *Extends) String() string {
-	return fmt.Sprintf("nodes.Extends(template=%s)", e.Template.String())
+	return fmt.Sprintf("nodes.Extends(template=%s)", e.Template)
 }
 
 func (e *Extends) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Extends(")
-	fmt.Fprintf(sb, "  template=%s,\n", e.Template.Dumps(indent+2))
+	fmt.Fprintf(sb, "  template=%s,\n", safeDumps(e.Template, indent+1))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -117,15 +117,15 @@ func (f *For) String() string {
 func (f *For) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.For(")
-	fmt.Fprintf(sb, "  target=%s,\n", f.Target.Dumps(indent+2))
+	fmt.Fprintf(sb, "  target=%s,\n", safeDumps(f.Target, indent+1))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  iter=%s,\n", f.Iter.Dumps(indent+2))
+	fmt.Fprintf(sb, "  iter=%s,\n", safeDumps(f.Iter, indent+1))
 	sb.WriteIndent()
 	sb.WriteNodeList("body", f.Body)
 	sb.WriteIndent()
 	sb.WriteNodeList("else_", f.Else_)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  test=%s,\n", f.Test.Dumps(indent+2))
+	fmt.Fprintf(sb, "  test=%s,\n", safeDumps(f.Test, indent+1))
 	sb.WriteIndent()
 	fmt.Fprintf(sb, "  recursive=%t,\n", f.Recursive)
 	sb.WriteIndent()
@@ -181,7 +181,7 @@ func (i *If) Dumps(indent int) string {
 
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.If(")
-	fmt.Fprintf(sb, "  test=%s,\n", i.Test.Dumps(indent+2))
+	fmt.Fprintf(sb, "  test=%s,\n", safeDumps(i.Test, indent+1))
 	sb.WriteIndent()
 	sb.WriteNodeList("body", i.Body)
 	sb.WriteIndent()
@@ -312,7 +312,7 @@ func (cb *CallBlock) Dumps(indent int) string {
 
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.CallBlock(")
-	fmt.Fprintf(sb, "  call=%s,\n", cb.Call.Dumps(indent+2))
+	fmt.Fprintf(sb, "  call=%s,\n", safeDumps(cb.Call, indent+1))
 	sb.WriteIndent()
 	sb.WriteNodeList("args", args)
 	sb.WriteIndent()
@@ -367,9 +367,9 @@ func (fb *FilterBlock) String() string {
 func (fb *FilterBlock) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.FilterBlock(")
-	sb.WriteIndent()
 	sb.WriteNodeList("body", fb.Body)
-	fmt.Fprintf(sb, "  filter=%s,\n", fb.Filter.Dumps(indent+2))
+	sb.WriteIndent()
+	fmt.Fprintf(sb, "  filter=%s,\n", safeDumps(fb.Filter, indent+1))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -510,7 +510,7 @@ func (i *Include) String() string {
 func (i *Include) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Include(")
-	fmt.Fprintf(sb, "  template=%s,\n", i.Template.Dumps(indent+2))
+	fmt.Fprintf(sb, "  template=%s,\n", safeDumps(i.Template, indent+1))
 	sb.WriteIndent()
 	fmt.Fprintf(sb, "  with_context=%t,\n", i.WithContext)
 	sb.WriteIndent()
@@ -553,7 +553,7 @@ func (im *Import) String() string {
 func (im *Import) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Import(")
-	fmt.Fprintf(sb, "  template=%s,\n", im.Template.Dumps(indent+2))
+	fmt.Fprintf(sb, "  template=%s,\n", safeDumps(im.Template, indent+1))
 	sb.WriteIndent()
 	fmt.Fprintf(sb, "  target=%s,\n", reprString(im.Target))
 	sb.WriteIndent()
@@ -598,7 +598,7 @@ func (fi *FromImport) String() string {
 func (fi *FromImport) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.FromImport(")
-	fmt.Fprintf(sb, "  template=%s,\n", fi.Template.Dumps(indent+2))
+	fmt.Fprintf(sb, "  template=%s,\n", safeDumps(fi.Template, indent+1))
 	sb.WriteIndent()
 	sb.WriteStringList("names", fi.Names)
 	sb.WriteIndent()
@@ -636,7 +636,7 @@ func (es *ExprStmt) String() string {
 func (es *ExprStmt) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.ExprStmt(")
-	fmt.Fprintf(sb, "  node=%s,\n", es.Node.Dumps(indent+2))
+	fmt.Fprintf(sb, "  node=%s,\n", safeDumps(es.Node, indent+1))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -672,9 +672,9 @@ func (a *Assign) String() string {
 func (a *Assign) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Assign(")
-	fmt.Fprintf(sb, "  target=%s,\n", a.Target.Dumps(indent+2))
+	fmt.Fprintf(sb, "  target=%s,\n", safeDumps(a.Target, indent+1))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  node=%s,\n", a.Node.Dumps(indent+2))
+	fmt.Fprintf(sb, "  node=%s,\n", safeDumps(a.Node, indent+1))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -714,9 +714,9 @@ func (ab *AssignBlock) String() string {
 func (ab *AssignBlock) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.AssignBlock(")
-	fmt.Fprintf(sb, "  target=%s,\n", ab.Target.Dumps(indent+2))
+	fmt.Fprintf(sb, "  target=%s,\n", safeDumps(ab.Target, indent+1))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  filter=%s,\n", ab.Filter.Dumps(indent+2))
+	fmt.Fprintf(sb, "  filter=%s,\n", safeDumps(ab.Filter, indent+1))
 	sb.WriteIndent()
 	sb.WriteNodeList("body", ab.Body)
 	sb.WriteIndent()
@@ -838,7 +838,7 @@ func (os *OverlayScopy) String() string {
 func (os *OverlayScopy) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.OverlayScopy(")
-	fmt.Fprintf(sb, "  context=%s,\n", os.Context.Dumps(indent+2))
+	fmt.Fprintf(sb, "  context=%s,\n", safeDumps(os.Context, indent+1))
 	sb.WriteIndent()
 	sb.WriteNodeList("body", os.Body)
 	sb.WriteIndent()
