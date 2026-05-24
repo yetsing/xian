@@ -1,61 +1,62 @@
 package token
 
-import "slices"
+import (
+	"slices"
+)
 
 type TokenType string
 
 const (
-	TOKEN_ILLEGAL = "illegal"
-
-	TOKEN_ADD                 = "add"       // "+"
-	TOKEN_ASSIGN              = "assign"    // "="
-	TOKEN_COLON               = "colon"     // ":"
-	TOKEN_COMMA               = "comma"     // ","
-	TOKEN_DIV                 = "div"       // "/"
-	TOKEN_DOT                 = "dot"       // "."
-	TOKEN_EQ                  = "eq"        // "=="
-	TOKEN_FLOORDIV            = "floordiv"  // "//"
-	TOKEN_GT                  = "gt"        // ">"
-	TOKEN_GTEQ                = "gteq"      // ">="
-	TOKEN_LBRACE              = "lbrace"    // "{"
-	TOKEN_LBRACKET            = "lbracket"  // "["
-	TOKEN_LPAREN              = "lparen"    // "("
-	TOKEN_LT                  = "lt"        // "<"
-	TOKEN_LTEQ                = "lteq"      // "<="
-	TOKEN_MOD                 = "mod"       // "%"
-	TOKEN_MUL                 = "mul"       // "*"
-	TOKEN_NE                  = "ne"        // "!="
-	TOKEN_PIPE                = "pipe"      // "|"
-	TOKEN_POW                 = "pow"       // "**"
-	TOKEN_RBRACE              = "rbrace"    // "}"
-	TOKEN_RBRACKET            = "rbracket"  // "]"
-	TOKEN_RPAREN              = "rparen"    // ")"
-	TOKEN_SEMICOLON           = "semicolon" // ";"
-	TOKEN_SUB                 = "sub"       // "-"
-	TOKEN_TILDE               = "tilde"     // "~"
-	TOKEN_WHITESPACE          = "whitespace"
-	TOKEN_FLOAT               = "float"
-	TOKEN_INTEGER             = "integer"
-	TOKEN_NAME                = "name"
-	TOKEN_STRING              = "string"
-	TOKEN_OPERATOR            = "operator"
-	TOKEN_BLOCK_BEGIN         = "block_begin"
-	TOKEN_BLOCK_END           = "block_end"
-	TOKEN_VARIABLE_BEGIN      = "variable_begin"
-	TOKEN_VARIABLE_END        = "variable_end"
-	TOKEN_RAW_BEGIN           = "raw_begin"
-	TOKEN_RAW_END             = "raw_end"
-	TOKEN_COMMENT_BEGIN       = "comment_begin"
-	TOKEN_COMMENT_END         = "comment_end"
-	TOKEN_COMMENT             = "comment"
-	TOKEN_LINESTATEMENT_BEGIN = "linestatement_begin"
-	TOKEN_LINESTATEMENT_END   = "linestatement_end"
-	TOKEN_LINECOMMENT_BEGIN   = "linecomment_begin"
-	TOKEN_LINECOMMENT_END     = "linecomment_end"
-	TOKEN_LINECOMMENT         = "linecomment"
-	TOKEN_DATA                = "data"
-	TOKEN_INITIAL             = "initial"
-	TOKEN_EOF                 = "eof"
+	TOKEN_ILLEGAL             TokenType = "illegal"
+	TOKEN_ADD                 TokenType = "add"       // "+"
+	TOKEN_ASSIGN              TokenType = "assign"    // "="
+	TOKEN_COLON               TokenType = "colon"     // ":"
+	TOKEN_COMMA               TokenType = "comma"     // ","
+	TOKEN_DIV                 TokenType = "div"       // "/"
+	TOKEN_DOT                 TokenType = "dot"       // "."
+	TOKEN_EQ                  TokenType = "eq"        // "=="
+	TOKEN_FLOORDIV            TokenType = "floordiv"  // "//"
+	TOKEN_GT                  TokenType = "gt"        // ">"
+	TOKEN_GTEQ                TokenType = "gteq"      // ">="
+	TOKEN_LBRACE              TokenType = "lbrace"    // "{"
+	TOKEN_LBRACKET            TokenType = "lbracket"  // "["
+	TOKEN_LPAREN              TokenType = "lparen"    // "("
+	TOKEN_LT                  TokenType = "lt"        // "<"
+	TOKEN_LTEQ                TokenType = "lteq"      // "<="
+	TOKEN_MOD                 TokenType = "mod"       // "%"
+	TOKEN_MUL                 TokenType = "mul"       // "*"
+	TOKEN_NE                  TokenType = "ne"        // "!="
+	TOKEN_PIPE                TokenType = "pipe"      // "|"
+	TOKEN_POW                 TokenType = "pow"       // "**"
+	TOKEN_RBRACE              TokenType = "rbrace"    // "}"
+	TOKEN_RBRACKET            TokenType = "rbracket"  // "]"
+	TOKEN_RPAREN              TokenType = "rparen"    // ")"
+	TOKEN_SEMICOLON           TokenType = "semicolon" // ";"
+	TOKEN_SUB                 TokenType = "sub"       // "-"
+	TOKEN_TILDE               TokenType = "tilde"     // "~"
+	TOKEN_WHITESPACE          TokenType = "whitespace"
+	TOKEN_FLOAT               TokenType = "float"
+	TOKEN_INTEGER             TokenType = "integer"
+	TOKEN_NAME                TokenType = "name"
+	TOKEN_STRING              TokenType = "string"
+	TOKEN_OPERATOR            TokenType = "operator"
+	TOKEN_BLOCK_BEGIN         TokenType = "block_begin"
+	TOKEN_BLOCK_END           TokenType = "block_end"
+	TOKEN_VARIABLE_BEGIN      TokenType = "variable_begin"
+	TOKEN_VARIABLE_END        TokenType = "variable_end"
+	TOKEN_RAW_BEGIN           TokenType = "raw_begin"
+	TOKEN_RAW_END             TokenType = "raw_end"
+	TOKEN_COMMENT_BEGIN       TokenType = "comment_begin"
+	TOKEN_COMMENT_END         TokenType = "comment_end"
+	TOKEN_COMMENT             TokenType = "comment"
+	TOKEN_LINESTATEMENT_BEGIN TokenType = "linestatement_begin"
+	TOKEN_LINESTATEMENT_END   TokenType = "linestatement_end"
+	TOKEN_LINECOMMENT_BEGIN   TokenType = "linecomment_begin"
+	TOKEN_LINECOMMENT_END     TokenType = "linecomment_end"
+	TOKEN_LINECOMMENT         TokenType = "linecomment"
+	TOKEN_DATA                TokenType = "data"
+	TOKEN_INITIAL             TokenType = "initial"
+	TOKEN_EOF                 TokenType = "eof"
 )
 
 type Token struct {
@@ -65,56 +66,40 @@ type Token struct {
 	End     Position
 }
 
-func (t *Token) TypeIs(ttype TokenType) bool {
-	return t.Type == ttype
+func (t *Token) Equal2(ty TokenType, lit string) bool {
+	return t.Type == ty && t.Literal == lit
 }
 
-func (t *Token) TypeNotIs(ttype TokenType) bool {
-	return t.Type != ttype
+func (t *Token) TypeIn(types ...TokenType) bool {
+	return slices.Contains(types, t.Type)
 }
 
-func (t *Token) TypeIn(ttypes ...TokenType) bool {
-	return slices.ContainsFunc(ttypes, t.TypeIs)
+func (t *Token) TypeNotIn(types ...TokenType) bool {
+	return !slices.Contains(types, t.Type)
 }
 
-func (t *Token) LiteralIs(s string) bool {
-	return t.Literal == s
+func (t *Token) LiteralIn(literals ...string) bool {
+	return slices.Contains(literals, t.Literal)
 }
 
-func (t *Token) Is2(ttype TokenType, literal string) bool {
-	return t.TypeIs(ttype) && t.LiteralIs(literal)
+func (t *Token) LiteralNotIn(literals ...string) bool {
+	return !slices.Contains(literals, t.Literal)
 }
 
-func (t *Token) IsOperator() bool {
-	_, ok := operators[t.Literal]
-	return ok
+// Test checks if the token matches the given token.
+// If the given token's Literal is empty, only the Type is compared.
+func (t *Token) Test(tk Token) bool {
+	if tk.Literal == "" {
+		return t.Type == tk.Type
+	}
+
+	return t.Type == tk.Type && t.Literal == tk.Literal
 }
 
-var operators = map[string]TokenType{
-	"+":  TOKEN_ADD,
-	"-":  TOKEN_SUB,
-	"/":  TOKEN_DIV,
-	"//": TOKEN_FLOORDIV,
-	"*":  TOKEN_MUL,
-	"%":  TOKEN_MOD,
-	"**": TOKEN_POW,
-	"~":  TOKEN_TILDE,
-	"[":  TOKEN_LBRACKET,
-	"]":  TOKEN_RBRACKET,
-	"(":  TOKEN_LPAREN,
-	")":  TOKEN_RPAREN,
-	"{":  TOKEN_LBRACE,
-	"}":  TOKEN_RBRACE,
-	"==": TOKEN_EQ,
-	"!=": TOKEN_NE,
-	">":  TOKEN_GT,
-	">=": TOKEN_GTEQ,
-	"<":  TOKEN_LT,
-	"<=": TOKEN_LTEQ,
-	"=":  TOKEN_ASSIGN,
-	".":  TOKEN_DOT,
-	":":  TOKEN_COLON,
-	"|":  TOKEN_PIPE,
-	",":  TOKEN_COMMA,
-	";":  TOKEN_SEMICOLON,
+func (t *Token) TestAny(tks ...Token) bool {
+	return slices.ContainsFunc(tks, t.Test)
+}
+
+func (t *Token) Empty() bool {
+	return t.Type == "" && t.Literal == ""
 }
