@@ -154,7 +154,7 @@ BEGIN:
 			tl.codeLexer = NewLexer(segment.Literal, true)
 		}
 		tk := tl.codeLexer.NextToken()
-		if tk.TypeIs(token.TOKEN_EOF) {
+		if tk.Type == token.TOKEN_EOF {
 			// 代码块分析完毕，回到主流程
 			tl.codeLexer = nil
 			tl.segmentIndex++
