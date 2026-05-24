@@ -6,6 +6,12 @@ import (
 	"github.com/yetsing/xian/token"
 )
 
+// All statement nodes implement this
+type Statement interface {
+	Node
+	statementNode()
+}
+
 type Output struct {
 	BaseNode
 
@@ -81,23 +87,23 @@ func (e *Extends) ChildNodes() []ChildNode {
 type For struct {
 	BaseNode
 
-	target    Node
-	iter      Node
-	body      []Node
-	else_     []Node
-	test      Node
-	recursive bool
+	Target    Node
+	Iter      Node
+	Body      []Node
+	Else_     []Node
+	Test      Node
+	Recursive bool
 }
 
 func NewFor(token token.Token, target Node, iter Node, body []Node, else_ []Node, test Node, recursive bool) *For {
 	return &For{
 		BaseNode:  NewBaseNode(token),
-		target:    target,
-		iter:      iter,
-		body:      body,
-		else_:     else_,
-		test:      test,
-		recursive: recursive,
+		Target:    target,
+		Iter:      iter,
+		Body:      body,
+		Else_:     else_,
+		Test:      test,
+		Recursive: recursive,
 	}
 }
 
@@ -105,23 +111,23 @@ func (f *For) statementNode() {}
 
 func (f *For) String() string {
 	return fmt.Sprintf("nodes.For(target=%s, iter=%s, body=%s, else_=%s, test=%s, recursive=%t)",
-		f.target.String(), f.iter.String(), reprNodeList(f.body), reprNodeList(f.else_), f.test.String(), f.recursive)
+		f.Target.String(), f.Iter.String(), reprNodeList(f.Body), reprNodeList(f.Else_), f.Test.String(), f.Recursive)
 }
 
 func (f *For) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.For(")
-	fmt.Fprintf(sb, "  target=%s,\n", f.target.Dumps(indent+2))
+	fmt.Fprintf(sb, "  target=%s,\n", f.Target.Dumps(indent+2))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  iter=%s,\n", f.iter.Dumps(indent+2))
+	fmt.Fprintf(sb, "  iter=%s,\n", f.Iter.Dumps(indent+2))
 	sb.WriteIndent()
-	sb.WriteNodeList("body", f.body)
+	sb.WriteNodeList("body", f.Body)
 	sb.WriteIndent()
-	sb.WriteNodeList("else_", f.else_)
+	sb.WriteNodeList("else_", f.Else_)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  test=%s,\n", f.test.Dumps(indent+2))
+	fmt.Fprintf(sb, "  test=%s,\n", f.Test.Dumps(indent+2))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  recursive=%t,\n", f.recursive)
+	fmt.Fprintf(sb, "  recursive=%t,\n", f.Recursive)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -129,225 +135,225 @@ func (f *For) Dumps(indent int) string {
 
 func (f *For) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "target", Value: f.target},
-		{Name: "iter", Value: f.iter},
-		{Name: "body", Values: f.body},
-		{Name: "else_", Values: f.else_},
-		{Name: "test", Value: f.test},
+		{Name: "target", Value: f.Target},
+		{Name: "iter", Value: f.Iter},
+		{Name: "body", Values: f.Body},
+		{Name: "else_", Values: f.Else_},
+		{Name: "test", Value: f.Test},
 	}
 }
 
 type If struct {
 	BaseNode
 
-	test  Node
-	body  []Node
-	elif_ []*If
-	else_ []Node
+	Test  Node
+	Body  []Node
+	Elif_ []*If
+	Else_ []Node
 }
 
 func NewIf(token token.Token, test Node, body []Node, elif_ []*If, else_ []Node) *If {
 	return &If{
 		BaseNode: NewBaseNode(token),
-		test:     test,
-		body:     body,
-		elif_:    elif_,
-		else_:    else_,
+		Test:     test,
+		Body:     body,
+		Elif_:    elif_,
+		Else_:    else_,
 	}
 }
 
 func (i *If) statementNode() {}
 
 func (i *If) String() string {
-	elifNodes := make([]Node, len(i.elif_))
-	for j := range i.elif_ {
-		elifNodes[j] = i.elif_[j]
+	elifNodes := make([]Node, len(i.Elif_))
+	for j := range i.Elif_ {
+		elifNodes[j] = i.Elif_[j]
 	}
 	return fmt.Sprintf("nodes.If(test=%s, body=%s, elif_=%s, else_=%s)",
-		i.test.String(), reprNodeList(i.body), reprNodeList(elifNodes), reprNodeList(i.else_))
+		i.Test.String(), reprNodeList(i.Body), reprNodeList(elifNodes), reprNodeList(i.Else_))
 }
 
 func (i *If) Dumps(indent int) string {
-	elifNodes := make([]Node, len(i.elif_))
-	for j := range i.elif_ {
-		elifNodes[j] = i.elif_[j]
+	elifNodes := make([]Node, len(i.Elif_))
+	for j := range i.Elif_ {
+		elifNodes[j] = i.Elif_[j]
 	}
 
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.If(")
-	fmt.Fprintf(sb, "  test=%s,\n", i.test.Dumps(indent+2))
+	fmt.Fprintf(sb, "  test=%s,\n", i.Test.Dumps(indent+2))
 	sb.WriteIndent()
-	sb.WriteNodeList("body", i.body)
+	sb.WriteNodeList("body", i.Body)
 	sb.WriteIndent()
 	sb.WriteNodeList("elif_", elifNodes)
 	sb.WriteIndent()
-	sb.WriteNodeList("else_", i.else_)
+	sb.WriteNodeList("else_", i.Else_)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
 }
 
 func (i *If) ChildNodes() []ChildNode {
-	elifNodes := make([]Node, len(i.elif_))
-	for j := range i.elif_ {
-		elifNodes[j] = i.elif_[j]
+	elifNodes := make([]Node, len(i.Elif_))
+	for j := range i.Elif_ {
+		elifNodes[j] = i.Elif_[j]
 	}
 
 	return []ChildNode{
-		{Name: "test", Value: i.test},
-		{Name: "body", Values: i.body},
+		{Name: "test", Value: i.Test},
+		{Name: "body", Values: i.Body},
 		{Name: "elif_", Values: elifNodes},
-		{Name: "else_", Values: i.else_},
+		{Name: "else_", Values: i.Else_},
 	}
 }
 
 type Macro struct {
 	BaseNode
 
-	name     string
-	args     []*Name
-	defaults []Expression
-	body     []Node
+	Name     string
+	Args     []*Name
+	Defaults []Expression
+	Body     []Node
 }
 
 func NewMacro(token token.Token, name string, args []*Name, defaults []Expression, body []Node) *Macro {
 	return &Macro{
 		BaseNode: NewBaseNode(token),
-		name:     name,
-		args:     args,
-		defaults: defaults,
-		body:     body,
+		Name:     name,
+		Args:     args,
+		Defaults: defaults,
+		Body:     body,
 	}
 }
 
 func (m *Macro) statementNode() {}
 
 func (m *Macro) String() string {
-	args := make([]Node, len(m.args))
-	for i := range m.args {
-		args[i] = m.args[i]
+	args := make([]Node, len(m.Args))
+	for i := range m.Args {
+		args[i] = m.Args[i]
 	}
 	return fmt.Sprintf("nodes.Macro(name=%s, args=%s, defaults=%s, body=%s)",
-		reprString(m.name), reprNodeList(args), reprExpressionList(m.defaults), reprNodeList(m.body))
+		reprString(m.Name), reprNodeList(args), reprExpressionList(m.Defaults), reprNodeList(m.Body))
 }
 
 func (m *Macro) Dumps(indent int) string {
-	args := make([]Node, len(m.args))
-	for i := range m.args {
-		args[i] = m.args[i]
+	args := make([]Node, len(m.Args))
+	for i := range m.Args {
+		args[i] = m.Args[i]
 	}
 
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Macro(")
-	fmt.Fprintf(sb, "  name=%s,\n", reprString(m.name))
+	fmt.Fprintf(sb, "  name=%s,\n", reprString(m.Name))
 	sb.WriteIndent()
 	sb.WriteNodeList("args", args)
 	sb.WriteIndent()
-	sb.WriteExpressionList("defaults", m.defaults)
+	sb.WriteExpressionList("defaults", m.Defaults)
 	sb.WriteIndent()
-	sb.WriteNodeList("body", m.body)
+	sb.WriteNodeList("body", m.Body)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
 }
 
 func (m *Macro) ChildNodes() []ChildNode {
-	args := make([]Node, len(m.args))
-	for i := range m.args {
-		args[i] = m.args[i]
+	args := make([]Node, len(m.Args))
+	for i := range m.Args {
+		args[i] = m.Args[i]
 	}
-	defaults := make([]Node, len(m.defaults))
-	for i := range m.defaults {
-		defaults[i] = m.defaults[i]
+	defaults := make([]Node, len(m.Defaults))
+	for i := range m.Defaults {
+		defaults[i] = m.Defaults[i]
 	}
 
 	return []ChildNode{
 		{Name: "args", Values: args},
 		{Name: "defaults", Values: defaults},
-		{Name: "body", Values: m.body},
+		{Name: "body", Values: m.Body},
 	}
 }
 
 type CallBlock struct {
 	BaseNode
 
-	call     *Call
-	args     []*Name
-	defaults []Expression
-	body     []Node
+	Call     *Call
+	Args     []*Name
+	Defaults []Expression
+	Body     []Node
 }
 
 func NewCallBlock(token token.Token, call *Call, args []*Name, defaults []Expression, body []Node) *CallBlock {
 	return &CallBlock{
 		BaseNode: NewBaseNode(token),
-		call:     call,
-		args:     args,
-		defaults: defaults,
-		body:     body,
+		Call:     call,
+		Args:     args,
+		Defaults: defaults,
+		Body:     body,
 	}
 }
 
 func (cb *CallBlock) statementNode() {}
 
 func (cb *CallBlock) String() string {
-	args := make([]Node, len(cb.args))
-	for i := range cb.args {
-		args[i] = cb.args[i]
+	args := make([]Node, len(cb.Args))
+	for i := range cb.Args {
+		args[i] = cb.Args[i]
 	}
 	return fmt.Sprintf("nodes.CallBlock(call=%s, args=%s, defaults=%s, body=%s)",
-		cb.call.String(), reprNodeList(args), reprExpressionList(cb.defaults), reprNodeList(cb.body))
+		cb.Call.String(), reprNodeList(args), reprExpressionList(cb.Defaults), reprNodeList(cb.Body))
 }
 
 func (cb *CallBlock) Dumps(indent int) string {
-	args := make([]Node, len(cb.args))
-	for i := range cb.args {
-		args[i] = cb.args[i]
+	args := make([]Node, len(cb.Args))
+	for i := range cb.Args {
+		args[i] = cb.Args[i]
 	}
 
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.CallBlock(")
-	fmt.Fprintf(sb, "  call=%s,\n", cb.call.Dumps(indent+2))
+	fmt.Fprintf(sb, "  call=%s,\n", cb.Call.Dumps(indent+2))
 	sb.WriteIndent()
 	sb.WriteNodeList("args", args)
 	sb.WriteIndent()
-	sb.WriteExpressionList("defaults", cb.defaults)
+	sb.WriteExpressionList("defaults", cb.Defaults)
 	sb.WriteIndent()
-	sb.WriteNodeList("body", cb.body)
+	sb.WriteNodeList("body", cb.Body)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
 }
 
 func (cb *CallBlock) ChildNodes() []ChildNode {
-	args := make([]Node, len(cb.args))
-	for i := range cb.args {
-		args[i] = cb.args[i]
+	args := make([]Node, len(cb.Args))
+	for i := range cb.Args {
+		args[i] = cb.Args[i]
 	}
-	defaults := make([]Node, len(cb.defaults))
-	for i := range cb.defaults {
-		defaults[i] = cb.defaults[i]
+	defaults := make([]Node, len(cb.Defaults))
+	for i := range cb.Defaults {
+		defaults[i] = cb.Defaults[i]
 	}
 
 	return []ChildNode{
-		{Name: "call", Value: cb.call},
+		{Name: "call", Value: cb.Call},
 		{Name: "args", Values: args},
 		{Name: "defaults", Values: defaults},
-		{Name: "body", Values: cb.body},
+		{Name: "body", Values: cb.Body},
 	}
 }
 
 type FilterBlock struct {
 	BaseNode
 
-	body   []Node
-	filter *Filter
+	Body   []Node
+	Filter *Filter
 }
 
 func NewFilterBlock(token token.Token, body []Node, filter *Filter) *FilterBlock {
 	return &FilterBlock{
 		BaseNode: NewBaseNode(token),
-		body:     body,
-		filter:   filter,
+		Body:     body,
+		Filter:   filter,
 	}
 }
 
@@ -355,15 +361,15 @@ func (fb *FilterBlock) statementNode() {}
 
 func (fb *FilterBlock) String() string {
 	return fmt.Sprintf("nodes.FilterBlock(body=%s, filter=%s)",
-		reprNodeList(fb.body), fb.filter.String())
+		reprNodeList(fb.Body), fb.Filter.String())
 }
 
 func (fb *FilterBlock) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.FilterBlock(")
 	sb.WriteIndent()
-	sb.WriteNodeList("body", fb.body)
-	fmt.Fprintf(sb, "  filter=%s,\n", fb.filter.Dumps(indent+2))
+	sb.WriteNodeList("body", fb.Body)
+	fmt.Fprintf(sb, "  filter=%s,\n", fb.Filter.Dumps(indent+2))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -371,25 +377,25 @@ func (fb *FilterBlock) Dumps(indent int) string {
 
 func (fb *FilterBlock) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "body", Values: fb.body},
-		{Name: "filter", Value: fb.filter},
+		{Name: "body", Values: fb.Body},
+		{Name: "filter", Value: fb.Filter},
 	}
 }
 
 type With struct {
 	BaseNode
 
-	targets []Expression
-	values  []Expression
-	body    []Node
+	Targets []Expression
+	Values  []Expression
+	Body    []Node
 }
 
 func NewWith(token token.Token, targets []Expression, values []Expression, body []Node) *With {
 	return &With{
 		BaseNode: NewBaseNode(token),
-		targets:  targets,
-		values:   values,
-		body:     body,
+		Targets:  targets,
+		Values:   values,
+		Body:     body,
 	}
 }
 
@@ -397,55 +403,55 @@ func (w *With) statementNode() {}
 
 func (w *With) String() string {
 	return fmt.Sprintf("nodes.With(targets=%s, values=%s, body=%s)",
-		reprExpressionList(w.targets), reprExpressionList(w.values), reprNodeList(w.body))
+		reprExpressionList(w.Targets), reprExpressionList(w.Values), reprNodeList(w.Body))
 }
 
 func (w *With) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.With(")
-	sb.WriteExpressionList("targets", w.targets)
+	sb.WriteExpressionList("targets", w.Targets)
 	sb.WriteIndent()
-	sb.WriteExpressionList("values", w.values)
+	sb.WriteExpressionList("values", w.Values)
 	sb.WriteIndent()
-	sb.WriteNodeList("body", w.body)
+	sb.WriteNodeList("body", w.Body)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
 }
 
 func (w *With) ChildNodes() []ChildNode {
-	targets := make([]Node, len(w.targets))
-	for i := range w.targets {
-		targets[i] = w.targets[i]
+	targets := make([]Node, len(w.Targets))
+	for i := range w.Targets {
+		targets[i] = w.Targets[i]
 	}
-	values := make([]Node, len(w.values))
-	for i := range w.values {
-		values[i] = w.values[i]
+	values := make([]Node, len(w.Values))
+	for i := range w.Values {
+		values[i] = w.Values[i]
 	}
 
 	return []ChildNode{
 		{Name: "targets", Values: targets},
 		{Name: "values", Values: values},
-		{Name: "body", Values: w.body},
+		{Name: "body", Values: w.Body},
 	}
 }
 
 type Block struct {
 	BaseNode
 
-	name     string
-	body     []Node
-	scoped   bool
-	required bool
+	Name     string
+	Body     []Node
+	Scoped   bool
+	Required bool
 }
 
 func NewBlock(token token.Token, name string, body []Node, scoped bool, required bool) *Block {
 	return &Block{
 		BaseNode: NewBaseNode(token),
-		name:     name,
-		body:     body,
-		scoped:   scoped,
-		required: required,
+		Name:     name,
+		Body:     body,
+		Scoped:   scoped,
+		Required: required,
 	}
 }
 
@@ -453,19 +459,19 @@ func (b *Block) statementNode() {}
 
 func (b *Block) String() string {
 	return fmt.Sprintf("nodes.Block(name=%s, body=%s, scoped=%t, required=%t)",
-		reprString(b.name), reprNodeList(b.body), b.scoped, b.required)
+		reprString(b.Name), reprNodeList(b.Body), b.Scoped, b.Required)
 }
 
 func (b *Block) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Block(")
-	fmt.Fprintf(sb, "  name=%s,\n", reprString(b.name))
+	fmt.Fprintf(sb, "  name=%s,\n", reprString(b.Name))
 	sb.WriteIndent()
-	sb.WriteNodeList("body", b.body)
+	sb.WriteNodeList("body", b.Body)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  scoped=%t,\n", b.scoped)
+	fmt.Fprintf(sb, "  scoped=%t,\n", b.Scoped)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  required=%t,\n", b.required)
+	fmt.Fprintf(sb, "  required=%t,\n", b.Required)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -473,24 +479,24 @@ func (b *Block) Dumps(indent int) string {
 
 func (b *Block) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "body", Values: b.body},
+		{Name: "body", Values: b.Body},
 	}
 }
 
 type Include struct {
 	BaseNode
 
-	template      Expression
-	withContext   bool
-	ignoreMissing bool
+	Template      Expression
+	WithContext   bool
+	IgnoreMissing bool
 }
 
 func NewInclude(token token.Token, template Expression, withContext bool, ignoreMissing bool) *Include {
 	return &Include{
 		BaseNode:      NewBaseNode(token),
-		template:      template,
-		withContext:   withContext,
-		ignoreMissing: ignoreMissing,
+		Template:      template,
+		WithContext:   withContext,
+		IgnoreMissing: ignoreMissing,
 	}
 }
 
@@ -498,17 +504,17 @@ func (i *Include) statementNode() {}
 
 func (i *Include) String() string {
 	return fmt.Sprintf("nodes.Include(template=%s, with_context=%t, ignore_missing=%t)",
-		i.template.String(), i.withContext, i.ignoreMissing)
+		i.Template.String(), i.WithContext, i.IgnoreMissing)
 }
 
 func (i *Include) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Include(")
-	fmt.Fprintf(sb, "  template=%s,\n", i.template.Dumps(indent+2))
+	fmt.Fprintf(sb, "  template=%s,\n", i.Template.Dumps(indent+2))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  with_context=%t,\n", i.withContext)
+	fmt.Fprintf(sb, "  with_context=%t,\n", i.WithContext)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  ignore_missing=%t,\n", i.ignoreMissing)
+	fmt.Fprintf(sb, "  ignore_missing=%t,\n", i.IgnoreMissing)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -516,24 +522,24 @@ func (i *Include) Dumps(indent int) string {
 
 func (i *Include) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "template", Value: i.template},
+		{Name: "template", Value: i.Template},
 	}
 }
 
 type Import struct {
 	BaseNode
 
-	template    Expression
-	target      string
-	withContext bool
+	Template    Expression
+	Target      string
+	WithContext bool
 }
 
 func NewImport(token token.Token, template Expression, target string, withContext bool) *Import {
 	return &Import{
 		BaseNode:    NewBaseNode(token),
-		template:    template,
-		target:      target,
-		withContext: withContext,
+		Template:    template,
+		Target:      target,
+		WithContext: withContext,
 	}
 }
 
@@ -541,17 +547,17 @@ func (im *Import) statementNode() {}
 
 func (im *Import) String() string {
 	return fmt.Sprintf("nodes.Import(template=%s, target=%s, with_context=%t)",
-		im.template.String(), reprString(im.target), im.withContext)
+		im.Template.String(), reprString(im.Target), im.WithContext)
 }
 
 func (im *Import) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Import(")
-	fmt.Fprintf(sb, "  template=%s,\n", im.template.Dumps(indent+2))
+	fmt.Fprintf(sb, "  template=%s,\n", im.Template.Dumps(indent+2))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  target=%s,\n", reprString(im.target))
+	fmt.Fprintf(sb, "  target=%s,\n", reprString(im.Target))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  with_context=%t,\n", im.withContext)
+	fmt.Fprintf(sb, "  with_context=%t,\n", im.WithContext)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -559,24 +565,26 @@ func (im *Import) Dumps(indent int) string {
 
 func (im *Import) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "template", Value: im.template},
+		{Name: "template", Value: im.Template},
 	}
 }
 
 type FromImport struct {
 	BaseNode
 
-	template    Expression
-	names       []string
-	withContext bool
+	Template    Expression
+	Names       []string
+	Aliases     []string
+	WithContext bool
 }
 
-func NewFromImport(token token.Token, template Expression, names []string, withContext bool) *FromImport {
+func NewFromImport(token token.Token, template Expression, names []string, aliases []string, withContext bool) *FromImport {
 	return &FromImport{
 		BaseNode:    NewBaseNode(token),
-		template:    template,
-		names:       names,
-		withContext: withContext,
+		Template:    template,
+		Names:       names,
+		Aliases:     aliases,
+		WithContext: withContext,
 	}
 }
 
@@ -584,17 +592,17 @@ func (fi *FromImport) statementNode() {}
 
 func (fi *FromImport) String() string {
 	return fmt.Sprintf("nodes.FromImport(template=%s, names=%s, with_context=%t)",
-		fi.template.String(), reprStringList(fi.names), fi.withContext)
+		fi.Template.String(), reprStringList(fi.Names), fi.WithContext)
 }
 
 func (fi *FromImport) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.FromImport(")
-	fmt.Fprintf(sb, "  template=%s,\n", fi.template.Dumps(indent+2))
+	fmt.Fprintf(sb, "  template=%s,\n", fi.Template.Dumps(indent+2))
 	sb.WriteIndent()
-	sb.WriteStringList("names", fi.names)
+	sb.WriteStringList("names", fi.Names)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  with_context=%t,\n", fi.withContext)
+	fmt.Fprintf(sb, "  with_context=%t,\n", fi.WithContext)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -602,33 +610,33 @@ func (fi *FromImport) Dumps(indent int) string {
 
 func (fi *FromImport) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "template", Value: fi.template},
+		{Name: "template", Value: fi.Template},
 	}
 }
 
 type ExprStmt struct {
 	BaseNode
 
-	node Node
+	Node Node
 }
 
 func NewExprStmt(token token.Token, node Node) *ExprStmt {
 	return &ExprStmt{
 		BaseNode: NewBaseNode(token),
-		node:     node,
+		Node:     node,
 	}
 }
 
 func (es *ExprStmt) statementNode() {}
 
 func (es *ExprStmt) String() string {
-	return fmt.Sprintf("nodes.ExprStmt(node=%s)", es.node.String())
+	return fmt.Sprintf("nodes.ExprStmt(node=%s)", es.Node.String())
 }
 
 func (es *ExprStmt) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.ExprStmt(")
-	fmt.Fprintf(sb, "  node=%s,\n", es.node.Dumps(indent+2))
+	fmt.Fprintf(sb, "  node=%s,\n", es.Node.Dumps(indent+2))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -636,37 +644,37 @@ func (es *ExprStmt) Dumps(indent int) string {
 
 func (es *ExprStmt) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "node", Value: es.node},
+		{Name: "node", Value: es.Node},
 	}
 }
 
 type Assign struct {
 	BaseNode
 
-	target Expression
-	node   Node
+	Target Expression
+	Node   Node
 }
 
 func NewAssign(token token.Token, target Expression, node Node) *Assign {
 	return &Assign{
 		BaseNode: NewBaseNode(token),
-		target:   target,
-		node:     node,
+		Target:   target,
+		Node:     node,
 	}
 }
 
 func (a *Assign) statementNode() {}
 
 func (a *Assign) String() string {
-	return fmt.Sprintf("nodes.Assign(target=%s, node=%s)", a.target.String(), a.node.String())
+	return fmt.Sprintf("nodes.Assign(target=%s, node=%s)", a.Target.String(), a.Node.String())
 }
 
 func (a *Assign) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Assign(")
-	fmt.Fprintf(sb, "  target=%s,\n", a.target.Dumps(indent+2))
+	fmt.Fprintf(sb, "  target=%s,\n", a.Target.Dumps(indent+2))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  node=%s,\n", a.node.Dumps(indent+2))
+	fmt.Fprintf(sb, "  node=%s,\n", a.Node.Dumps(indent+2))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -674,25 +682,25 @@ func (a *Assign) Dumps(indent int) string {
 
 func (a *Assign) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "target", Value: a.target},
-		{Name: "node", Value: a.node},
+		{Name: "target", Value: a.Target},
+		{Name: "node", Value: a.Node},
 	}
 }
 
 type AssignBlock struct {
 	BaseNode
 
-	target Expression
-	filter *Filter
-	body   []Node
+	Target Expression
+	Filter *Filter
+	Body   []Node
 }
 
 func NewAssignBlock(token token.Token, target Expression, filter *Filter, body []Node) *AssignBlock {
 	return &AssignBlock{
 		BaseNode: NewBaseNode(token),
-		target:   target,
-		filter:   filter,
-		body:     body,
+		Target:   target,
+		Filter:   filter,
+		Body:     body,
 	}
 }
 
@@ -700,17 +708,17 @@ func (ab *AssignBlock) statementNode() {}
 
 func (ab *AssignBlock) String() string {
 	return fmt.Sprintf("nodes.AssignBlock(target=%s, filter=%s, body=%s)",
-		ab.target.String(), ab.filter.String(), reprNodeList(ab.body))
+		ab.Target.String(), ab.Filter.String(), reprNodeList(ab.Body))
 }
 
 func (ab *AssignBlock) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.AssignBlock(")
-	fmt.Fprintf(sb, "  target=%s,\n", ab.target.Dumps(indent+2))
+	fmt.Fprintf(sb, "  target=%s,\n", ab.Target.Dumps(indent+2))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  filter=%s,\n", ab.filter.Dumps(indent+2))
+	fmt.Fprintf(sb, "  filter=%s,\n", ab.Filter.Dumps(indent+2))
 	sb.WriteIndent()
-	sb.WriteNodeList("body", ab.body)
+	sb.WriteNodeList("body", ab.Body)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -718,9 +726,9 @@ func (ab *AssignBlock) Dumps(indent int) string {
 
 func (ab *AssignBlock) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "target", Value: ab.target},
-		{Name: "filter", Value: ab.filter},
-		{Name: "body", Values: ab.body},
+		{Name: "target", Value: ab.Target},
+		{Name: "filter", Value: ab.Filter},
+		{Name: "body", Values: ab.Body},
 	}
 }
 
@@ -775,26 +783,26 @@ func (b *Break) ChildNodes() []ChildNode {
 type Scope struct {
 	BaseNode
 
-	body []Node
+	Body []Node
 }
 
 func NewScope(token token.Token, body []Node) *Scope {
 	return &Scope{
 		BaseNode: NewBaseNode(token),
-		body:     body,
+		Body:     body,
 	}
 }
 
 func (s *Scope) statementNode() {}
 
 func (s *Scope) String() string {
-	return fmt.Sprintf("nodes.Scope(body=%s)", reprNodeList(s.body))
+	return fmt.Sprintf("nodes.Scope(body=%s)", reprNodeList(s.Body))
 }
 
 func (s *Scope) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Scope(")
-	sb.WriteNodeList("body", s.body)
+	sb.WriteNodeList("body", s.Body)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -802,37 +810,37 @@ func (s *Scope) Dumps(indent int) string {
 
 func (s *Scope) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "body", Values: s.body},
+		{Name: "body", Values: s.Body},
 	}
 }
 
 type OverlayScopy struct {
 	BaseNode
 
-	context Expression
-	body    []Node
+	Context Expression
+	Body    []Node
 }
 
 func NewOverlayScopy(token token.Token, context Expression, body []Node) *OverlayScopy {
 	return &OverlayScopy{
 		BaseNode: NewBaseNode(token),
-		context:  context,
-		body:     body,
+		Context:  context,
+		Body:     body,
 	}
 }
 
 func (os *OverlayScopy) statementNode() {}
 
 func (os *OverlayScopy) String() string {
-	return fmt.Sprintf("nodes.OverlayScopy(context=%s, body=%s)", os.context.String(), reprNodeList(os.body))
+	return fmt.Sprintf("nodes.OverlayScopy(context=%s, body=%s)", os.Context.String(), reprNodeList(os.Body))
 }
 
 func (os *OverlayScopy) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.OverlayScopy(")
-	fmt.Fprintf(sb, "  context=%s,\n", os.context.Dumps(indent+2))
+	fmt.Fprintf(sb, "  context=%s,\n", os.Context.Dumps(indent+2))
 	sb.WriteIndent()
-	sb.WriteNodeList("body", os.body)
+	sb.WriteNodeList("body", os.Body)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -840,38 +848,38 @@ func (os *OverlayScopy) Dumps(indent int) string {
 
 func (os *OverlayScopy) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "context", Value: os.context},
-		{Name: "body", Values: os.body},
+		{Name: "context", Value: os.Context},
+		{Name: "body", Values: os.Body},
 	}
 }
 
 type EvalContextModifier struct {
 	BaseNode
 
-	options []*Keyword
+	Options []*Keyword
 }
 
 func NewEvalContextModifier(token token.Token, options []*Keyword) *EvalContextModifier {
 	return &EvalContextModifier{
 		BaseNode: NewBaseNode(token),
-		options:  options,
+		Options:  options,
 	}
 }
 
 func (ecm *EvalContextModifier) statementNode() {}
 
 func (ecm *EvalContextModifier) String() string {
-	options := make([]Node, len(ecm.options))
-	for i := range ecm.options {
-		options[i] = ecm.options[i]
+	options := make([]Node, len(ecm.Options))
+	for i := range ecm.Options {
+		options[i] = ecm.Options[i]
 	}
 	return fmt.Sprintf("nodes.EvalContextModifier(options=%s)", reprNodeList(options))
 }
 
 func (ecm *EvalContextModifier) Dumps(indent int) string {
-	options := make([]Node, len(ecm.options))
-	for i := range ecm.options {
-		options[i] = ecm.options[i]
+	options := make([]Node, len(ecm.Options))
+	for i := range ecm.Options {
+		options[i] = ecm.Options[i]
 	}
 
 	sb := newStringBuilder(indent)
@@ -883,9 +891,9 @@ func (ecm *EvalContextModifier) Dumps(indent int) string {
 }
 
 func (ecm *EvalContextModifier) ChildNodes() []ChildNode {
-	options := make([]Node, len(ecm.options))
-	for i := range ecm.options {
-		options[i] = ecm.options[i]
+	options := make([]Node, len(ecm.Options))
+	for i := range ecm.Options {
+		options[i] = ecm.Options[i]
 	}
 
 	return []ChildNode{
@@ -896,37 +904,37 @@ func (ecm *EvalContextModifier) ChildNodes() []ChildNode {
 type ScopedEvalContextModifier struct {
 	EvalContextModifier
 
-	body []Node
+	Body []Node
 }
 
 func NewScopedEvalContextModifier(token token.Token, options []*Keyword, body []Node) *ScopedEvalContextModifier {
 	return &ScopedEvalContextModifier{
 		EvalContextModifier: *NewEvalContextModifier(token, options),
-		body:                body,
+		Body:                body,
 	}
 }
 
 func (sem *ScopedEvalContextModifier) statementNode() {}
 
 func (sem *ScopedEvalContextModifier) String() string {
-	options := make([]Node, len(sem.options))
-	for i := range sem.options {
-		options[i] = sem.options[i]
+	options := make([]Node, len(sem.Options))
+	for i := range sem.Options {
+		options[i] = sem.Options[i]
 	}
-	return fmt.Sprintf("nodes.ScopedEvalContextModifier(options=%s, body=%s)", reprNodeList(options), reprNodeList(sem.body))
+	return fmt.Sprintf("nodes.ScopedEvalContextModifier(options=%s, body=%s)", reprNodeList(options), reprNodeList(sem.Body))
 }
 
 func (sem *ScopedEvalContextModifier) Dumps(indent int) string {
-	options := make([]Node, len(sem.options))
-	for i := range sem.options {
-		options[i] = sem.options[i]
+	options := make([]Node, len(sem.Options))
+	for i := range sem.Options {
+		options[i] = sem.Options[i]
 	}
 
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.ScopedEvalContextModifier(")
 	sb.WriteNodeList("options", options)
 	sb.WriteIndent()
-	sb.WriteNodeList("body", sem.body)
+	sb.WriteNodeList("body", sem.Body)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -934,7 +942,7 @@ func (sem *ScopedEvalContextModifier) Dumps(indent int) string {
 
 func (sem *ScopedEvalContextModifier) ChildNodes() []ChildNode {
 	childnodes := sem.EvalContextModifier.ChildNodes()
-	childnodes = append(childnodes, ChildNode{Name: "body", Values: sem.body})
+	childnodes = append(childnodes, ChildNode{Name: "body", Values: sem.Body})
 
 	return childnodes
 }

@@ -6,66 +6,82 @@ import (
 	"github.com/yetsing/xian/token"
 )
 
+// All expression nodes implement this
+type Expression interface {
+	Node
+	expressionNode()
+	CanAssign() bool
+}
+
 type BinExpr struct {
 	BaseNode
 
-	left     Expression
-	operator string
-	right    Expression
+	Left     Expression
+	Operator string
+	Right    Expression
 }
 
 func (be *BinExpr) expressionNode() {}
 
 func (be *BinExpr) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "left", Value: be.left},
-		{Name: "right", Value: be.right},
+		{Name: "left", Value: be.Left},
+		{Name: "right", Value: be.Right},
 	}
 }
 
 type UnaryExpr struct {
 	BaseNode
 
-	operator string
-	node     Expression
+	Operator string
+	Node     Expression
 }
 
 func (ue *UnaryExpr) expressionNode() {}
 
 func (ue *UnaryExpr) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "node", Value: ue.node},
+		{Name: "node", Value: ue.Node},
 	}
 }
 
 type Name struct {
 	BaseNode
 
-	name string
-	ctx  string
+	Name string
+	Ctx  string
 }
 
 func NewName(token token.Token, name string, ctx string) *Name {
 	n := &Name{
 		BaseNode: NewBaseNode(token),
-		name:     name,
-		ctx:      ctx,
+		Name:     name,
+		Ctx:      ctx,
 	}
 	return n
 }
 
 func (n *Name) expressionNode() {}
 
+func (n *Name) CanAssign() bool {
+	switch n.Name {
+	case "true", "false", "True", "False", "none", "None":
+		return false
+	default:
+		return true
+	}
+}
+
 func (n *Name) String() string {
-	return fmt.Sprintf("nodes.Name(name=%s, ctx=%s)", reprString(n.name), reprString(n.ctx))
+	return fmt.Sprintf("nodes.Name(name=%s, ctx=%s)", reprString(n.Name), reprString(n.Ctx))
 }
 
 func (n *Name) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Name(")
-	fmt.Fprintf(sb, "  name=%s,\n", reprString(n.name))
+	fmt.Fprintf(sb, "  name=%s,\n", reprString(n.Name))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  ctx=%s,\n", reprString(n.ctx))
+	fmt.Fprintf(sb, "  ctx=%s,\n", reprString(n.Ctx))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -78,15 +94,15 @@ func (n *Name) ChildNodes() []ChildNode {
 type NSRef struct {
 	BaseNode
 
-	name string
-	attr string
+	Name string
+	Attr string
 }
 
 func NewNSRef(token token.Token, name string, attr string) *NSRef {
 	ns := &NSRef{
 		BaseNode: NewBaseNode(token),
-		name:     name,
-		attr:     attr,
+		Name:     name,
+		Attr:     attr,
 	}
 	return ns
 }
@@ -94,15 +110,15 @@ func NewNSRef(token token.Token, name string, attr string) *NSRef {
 func (ns *NSRef) expressionNode() {}
 
 func (ns *NSRef) String() string {
-	return fmt.Sprintf("nodes.NSRef(name=%s, attr=%s)", reprString(ns.name), reprString(ns.attr))
+	return fmt.Sprintf("nodes.NSRef(name=%s, attr=%s)", reprString(ns.Name), reprString(ns.Attr))
 }
 
 func (ns *NSRef) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.NSRef(")
-	fmt.Fprintf(sb, "  name=%s,\n", reprString(ns.name))
+	fmt.Fprintf(sb, "  name=%s,\n", reprString(ns.Name))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  attr=%s,\n", reprString(ns.attr))
+	fmt.Fprintf(sb, "  attr=%s,\n", reprString(ns.Attr))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -110,6 +126,10 @@ func (ns *NSRef) Dumps(indent int) string {
 
 func (ns *NSRef) ChildNodes() []ChildNode {
 	return nil
+}
+
+func (ns *NSRef) CanAssign() bool {
+	return true
 }
 
 type Literal interface {
@@ -120,13 +140,13 @@ type Literal interface {
 type Const struct {
 	BaseNode
 
-	value any
+	Value any
 }
 
 func NewConst(token token.Token, value any) *Const {
 	return &Const{
 		BaseNode: NewBaseNode(token),
-		value:    value,
+		Value:    value,
 	}
 }
 
@@ -134,13 +154,13 @@ func (c *Const) expressionNode() {}
 func (c *Const) literalNode()    {}
 
 func (c *Const) String() string {
-	return fmt.Sprintf("nodes.Const(value=%s)", c.value)
+	return fmt.Sprintf("nodes.Const(value=%s)", c.Value)
 }
 
 func (c *Const) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Const(")
-	fmt.Fprintf(sb, "  value=%s,\n", c.value)
+	fmt.Fprintf(sb, "  value=%s,\n", c.Value)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -149,12 +169,12 @@ func (c *Const) Dumps(indent int) string {
 type TemplateData struct {
 	BaseNode
 
-	data string
+	Data string
 }
 
 func NewTemplateData(token token.Token, data string) *TemplateData {
 	td := &TemplateData{
-		data: data,
+		Data: data,
 	}
 	td.BaseNode = NewBaseNode(token)
 	return td
@@ -164,13 +184,13 @@ func (td *TemplateData) expressionNode() {}
 func (td *TemplateData) literalNode()    {}
 
 func (td *TemplateData) String() string {
-	return fmt.Sprintf("nodes.TemplateData(data=%s)", reprString(td.data))
+	return fmt.Sprintf("nodes.TemplateData(data=%s)", reprString(td.Data))
 }
 
 func (td *TemplateData) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.TemplateData(")
-	fmt.Fprintf(sb, "  data=%s,\n", reprString(td.data))
+	fmt.Fprintf(sb, "  data=%s,\n", reprString(td.Data))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -179,14 +199,14 @@ func (td *TemplateData) Dumps(indent int) string {
 type Tuple struct {
 	BaseNode
 
-	items []Expression
-	ctx   string
+	Items []Expression
+	Ctx   string
 }
 
 func NewTuple(token token.Token, items []Expression, ctx string) *Tuple {
 	t := &Tuple{
-		items: items,
-		ctx:   ctx,
+		Items: items,
+		Ctx:   ctx,
 	}
 	t.BaseNode = NewBaseNode(token)
 	return t
@@ -195,25 +215,34 @@ func NewTuple(token token.Token, items []Expression, ctx string) *Tuple {
 func (t *Tuple) expressionNode() {}
 func (t *Tuple) literalNode()    {}
 
+func (t *Tuple) CanAssign() bool {
+	for _, item := range t.Items {
+		if !item.CanAssign() {
+			return false
+		}
+	}
+	return true
+}
+
 func (t *Tuple) String() string {
-	return fmt.Sprintf("nodes.Tuple(items=%s, ctx=%s)", reprExpressionList(t.items), reprString(t.ctx))
+	return fmt.Sprintf("nodes.Tuple(items=%s, ctx=%s)", reprExpressionList(t.Items), reprString(t.Ctx))
 }
 
 func (t *Tuple) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Tuple(")
-	sb.WriteExpressionList("item", t.items)
+	sb.WriteExpressionList("item", t.Items)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  ctx=%s,\n", reprString(t.ctx))
+	fmt.Fprintf(sb, "  ctx=%s,\n", reprString(t.Ctx))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
 }
 
 func (t *Tuple) ChildNodes() []ChildNode {
-	items := make([]Node, len(t.items))
-	for i := range t.items {
-		items[i] = t.items[i]
+	items := make([]Node, len(t.Items))
+	for i := range t.Items {
+		items[i] = t.Items[i]
 	}
 	return []ChildNode{
 		{Name: "items", Values: items},
@@ -223,12 +252,12 @@ func (t *Tuple) ChildNodes() []ChildNode {
 type List struct {
 	BaseNode
 
-	items []Expression
+	Items []Expression
 }
 
 func NewList(token token.Token, items []Expression) *List {
 	l := &List{
-		items: items,
+		Items: items,
 	}
 	l.BaseNode = NewBaseNode(token)
 	return l
@@ -238,22 +267,22 @@ func (l *List) expressionNode() {}
 func (l *List) literalNode()    {}
 
 func (l *List) String() string {
-	return fmt.Sprintf("nodes.List(items=%s)", reprExpressionList(l.items))
+	return fmt.Sprintf("nodes.List(items=%s)", reprExpressionList(l.Items))
 }
 
 func (l *List) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.List(")
-	sb.WriteExpressionList("item", l.items)
+	sb.WriteExpressionList("item", l.Items)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
 }
 
 func (l *List) ChildNodes() []ChildNode {
-	items := make([]Node, len(l.items))
-	for i := range l.items {
-		items[i] = l.items[i]
+	items := make([]Node, len(l.Items))
+	for i := range l.Items {
+		items[i] = l.Items[i]
 	}
 	return []ChildNode{
 		{Name: "items", Values: items},
@@ -263,12 +292,12 @@ func (l *List) ChildNodes() []ChildNode {
 type Dict struct {
 	BaseNode
 
-	items []*Pair
+	Items []*Pair
 }
 
 func NewDict(token token.Token, items []*Pair) *Dict {
 	d := &Dict{
-		items: items,
+		Items: items,
 	}
 	d.BaseNode = NewBaseNode(token)
 	return d
@@ -278,16 +307,16 @@ func (d *Dict) expressionNode() {}
 func (d *Dict) literalNode()    {}
 
 func (d *Dict) String() string {
-	items := make([]Node, len(d.items))
-	for i, item := range d.items {
+	items := make([]Node, len(d.Items))
+	for i, item := range d.Items {
 		items[i] = item
 	}
 	return fmt.Sprintf("nodes.Dict(items=%s)", reprNodeList(items))
 }
 
 func (d *Dict) Dumps(indent int) string {
-	items := make([]Node, len(d.items))
-	for i, item := range d.items {
+	items := make([]Node, len(d.Items))
+	for i, item := range d.Items {
 		items[i] = item
 	}
 
@@ -300,9 +329,9 @@ func (d *Dict) Dumps(indent int) string {
 }
 
 func (d *Dict) ChildNodes() []ChildNode {
-	items := make([]Node, len(d.items))
-	for i := range d.items {
-		items[i] = d.items[i]
+	items := make([]Node, len(d.Items))
+	for i := range d.Items {
+		items[i] = d.Items[i]
 	}
 	return []ChildNode{
 		{Name: "items", Values: items},
@@ -312,16 +341,16 @@ func (d *Dict) ChildNodes() []ChildNode {
 type CondExpr struct {
 	BaseNode
 
-	test  Expression
-	expr1 Expression
-	expr2 Expression
+	Test  Expression
+	Expr1 Expression
+	Expr2 Expression
 }
 
 func NewCondExpr(token token.Token, test Expression, expr1 Expression, expr2 Expression) *CondExpr {
 	ce := &CondExpr{
-		test:  test,
-		expr1: expr1,
-		expr2: expr2,
+		Test:  test,
+		Expr1: expr1,
+		Expr2: expr2,
 	}
 	ce.BaseNode = NewBaseNode(token)
 	return ce
@@ -330,17 +359,17 @@ func NewCondExpr(token token.Token, test Expression, expr1 Expression, expr2 Exp
 func (ce *CondExpr) expressionNode() {}
 
 func (ce *CondExpr) String() string {
-	return fmt.Sprintf("nodes.CondExpr(test=%s, expr1=%s, expr2=%s)", ce.test, ce.expr1, ce.expr2)
+	return fmt.Sprintf("nodes.CondExpr(test=%s, expr1=%s, expr2=%s)", ce.Test, ce.Expr1, ce.Expr2)
 }
 
 func (ce *CondExpr) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.CondExpr(")
-	fmt.Fprintf(sb, "  test=%s,\n", ce.test)
+	fmt.Fprintf(sb, "  test=%s,\n", ce.Test)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  expr1=%s,\n", ce.expr1)
+	fmt.Fprintf(sb, "  expr1=%s,\n", ce.Expr1)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  expr2=%s,\n", ce.expr2)
+	fmt.Fprintf(sb, "  expr2=%s,\n", ce.Expr2)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -348,41 +377,41 @@ func (ce *CondExpr) Dumps(indent int) string {
 
 func (ce *CondExpr) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "test", Value: ce.test},
-		{Name: "expr1", Value: ce.expr1},
-		{Name: "expr2", Value: ce.expr2},
+		{Name: "test", Value: ce.Test},
+		{Name: "expr1", Value: ce.Expr1},
+		{Name: "expr2", Value: ce.Expr2},
 	}
 }
 
 type FilterTestCommon struct {
 	BaseNode
 
-	node      Expression
-	name      string
-	args      []Expression
-	kwargs    []*Pair
-	dynArgs   Expression
-	dynKwargs Expression
-	isFilter  bool
+	Node      Expression
+	Name      string
+	Args      []Expression
+	Kwargs    []*Keyword
+	DynArgs   Expression
+	DynKwargs Expression
+	IsFilter  bool
 }
 
 func (ftc *FilterTestCommon) expressionNode() {}
 
 func (ftc *FilterTestCommon) ChildNodes() []ChildNode {
-	items := make([]Node, len(ftc.args))
-	for i := range ftc.args {
-		items[i] = ftc.args[i]
+	items := make([]Node, len(ftc.Args))
+	for i := range ftc.Args {
+		items[i] = ftc.Args[i]
 	}
-	kwargs := make([]Node, len(ftc.kwargs))
-	for i := range ftc.kwargs {
-		kwargs[i] = ftc.kwargs[i]
+	kwargs := make([]Node, len(ftc.Kwargs))
+	for i := range ftc.Kwargs {
+		kwargs[i] = ftc.Kwargs[i]
 	}
 	return []ChildNode{
-		{Name: "node", Value: ftc.node},
+		{Name: "node", Value: ftc.Node},
 		{Name: "args", Values: items},
 		{Name: "kwargs", Values: kwargs},
-		{Name: "dynArgs", Value: ftc.dynArgs},
-		{Name: "dynKwargs", Value: ftc.dynKwargs},
+		{Name: "dynArgs", Value: ftc.DynArgs},
+		{Name: "dynKwargs", Value: ftc.DynKwargs},
 	}
 }
 
@@ -390,48 +419,48 @@ type Filter struct {
 	FilterTestCommon
 }
 
-func NewFilter(token token.Token, node Expression, name string, args []Expression, kwargs []*Pair, dynArgs Expression, dynKwargs Expression) *Filter {
+func NewFilter(token token.Token, node Expression, name string, args []Expression, kwargs []*Keyword, dynArgs Expression, dynKwargs Expression) *Filter {
 	return &Filter{
 		FilterTestCommon: FilterTestCommon{
 			BaseNode:  NewBaseNode(token),
-			node:      node,
-			name:      name,
-			args:      args,
-			kwargs:    kwargs,
-			dynArgs:   dynArgs,
-			dynKwargs: dynKwargs,
-			isFilter:  true,
+			Node:      node,
+			Name:      name,
+			Args:      args,
+			Kwargs:    kwargs,
+			DynArgs:   dynArgs,
+			DynKwargs: dynKwargs,
+			IsFilter:  true,
 		},
 	}
 }
 
 func (f *Filter) String() string {
-	kwargs := make([]Node, len(f.kwargs))
-	for i, kwarg := range f.kwargs {
+	kwargs := make([]Node, len(f.Kwargs))
+	for i, kwarg := range f.Kwargs {
 		kwargs[i] = kwarg
 	}
-	return fmt.Sprintf("nodes.Filter(node=%s, name=%s, args=%s, kwargs=%s, dynArgs=%s, dynKwargs=%s)", f.node, reprString(f.name), reprExpressionList(f.args), reprNodeList(kwargs), f.dynArgs, f.dynKwargs)
+	return fmt.Sprintf("nodes.Filter(node=%s, name=%s, args=%s, kwargs=%s, dynArgs=%s, dynKwargs=%s)", f.Node, reprString(f.Name), reprExpressionList(f.Args), reprNodeList(kwargs), f.DynArgs, f.DynKwargs)
 }
 
 func (f *Filter) Dumps(indent int) string {
-	kwargs := make([]Node, len(f.kwargs))
-	for i, kwarg := range f.kwargs {
+	kwargs := make([]Node, len(f.Kwargs))
+	for i, kwarg := range f.Kwargs {
 		kwargs[i] = kwarg
 	}
 
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Filter(")
-	fmt.Fprintf(sb, "  node=%s,\n", f.node)
+	fmt.Fprintf(sb, "  node=%s,\n", f.Node)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  name=%s,\n", reprString(f.name))
+	fmt.Fprintf(sb, "  name=%s,\n", reprString(f.Name))
 	sb.WriteIndent()
-	sb.WriteExpressionList("args", f.args)
+	sb.WriteExpressionList("args", f.Args)
 	sb.WriteIndent()
 	sb.WriteNodeList("kwargs", kwargs)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  dyn_args=%s,\n", f.dynArgs)
+	fmt.Fprintf(sb, "  dyn_args=%s,\n", f.DynArgs)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  dyn_kwargs=%s,\n", f.dynKwargs)
+	fmt.Fprintf(sb, "  dyn_kwargs=%s,\n", f.DynKwargs)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -441,48 +470,48 @@ type Test struct {
 	FilterTestCommon
 }
 
-func NewTest(token token.Token, node Expression, name string, args []Expression, kwargs []*Pair, dynArgs Expression, dynKwargs Expression) *Test {
+func NewTest(token token.Token, node Expression, name string, args []Expression, kwargs []*Keyword, dynArgs Expression, dynKwargs Expression) *Test {
 	return &Test{
 		FilterTestCommon: FilterTestCommon{
 			BaseNode:  NewBaseNode(token),
-			node:      node,
-			name:      name,
-			args:      args,
-			kwargs:    kwargs,
-			dynArgs:   dynArgs,
-			dynKwargs: dynKwargs,
-			isFilter:  false,
+			Node:      node,
+			Name:      name,
+			Args:      args,
+			Kwargs:    kwargs,
+			DynArgs:   dynArgs,
+			DynKwargs: dynKwargs,
+			IsFilter:  false,
 		},
 	}
 }
 
 func (t *Test) String() string {
-	kwargs := make([]Node, len(t.kwargs))
-	for i, kwarg := range t.kwargs {
+	kwargs := make([]Node, len(t.Kwargs))
+	for i, kwarg := range t.Kwargs {
 		kwargs[i] = kwarg
 	}
-	return fmt.Sprintf("nodes.Test(node=%s, name=%s, args=%s, kwargs=%s, dynArgs=%s, dynKwargs=%s)", t.node, reprString(t.name), reprExpressionList(t.args), reprNodeList(kwargs), t.dynArgs, t.dynKwargs)
+	return fmt.Sprintf("nodes.Test(node=%s, name=%s, args=%s, kwargs=%s, dynArgs=%s, dynKwargs=%s)", t.Node, reprString(t.Name), reprExpressionList(t.Args), reprNodeList(kwargs), t.DynArgs, t.DynKwargs)
 }
 
 func (t *Test) Dumps(indent int) string {
-	kwargs := make([]Node, len(t.kwargs))
-	for i, kwarg := range t.kwargs {
+	kwargs := make([]Node, len(t.Kwargs))
+	for i, kwarg := range t.Kwargs {
 		kwargs[i] = kwarg
 	}
 
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Test(")
-	fmt.Fprintf(sb, "  node=%s,\n", t.node)
+	fmt.Fprintf(sb, "  node=%s,\n", t.Node)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  name=%s,\n", reprString(t.name))
+	fmt.Fprintf(sb, "  name=%s,\n", reprString(t.Name))
 	sb.WriteIndent()
-	sb.WriteExpressionList("args", t.args)
+	sb.WriteExpressionList("args", t.Args)
 	sb.WriteIndent()
 	sb.WriteNodeList("kwargs", kwargs)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  dyn_args=%s,\n", t.dynArgs)
+	fmt.Fprintf(sb, "  dyn_args=%s,\n", t.DynArgs)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  dyn_kwargs=%s,\n", t.dynKwargs)
+	fmt.Fprintf(sb, "  dyn_kwargs=%s,\n", t.DynKwargs)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -491,87 +520,87 @@ func (t *Test) Dumps(indent int) string {
 type Call struct {
 	BaseNode
 
-	node      Expression
-	args      []Expression
-	kwargs    []*Keyword
-	dynArgs   Expression
-	dynKwargs Expression
+	Node      Expression
+	Args      []Expression
+	Kwargs    []*Keyword
+	DynArgs   Expression
+	DynKwargs Expression
 }
 
 func NewCall(token token.Token, node Expression, args []Expression, kwargs []*Keyword, dynArgs Expression, dynKwargs Expression) *Call {
 	return &Call{
 		BaseNode:  NewBaseNode(token),
-		node:      node,
-		args:      args,
-		kwargs:    kwargs,
-		dynArgs:   dynArgs,
-		dynKwargs: dynKwargs,
+		Node:      node,
+		Args:      args,
+		Kwargs:    kwargs,
+		DynArgs:   dynArgs,
+		DynKwargs: dynKwargs,
 	}
 }
 
 func (c *Call) expressionNode() {}
 
 func (c *Call) String() string {
-	kwargs := make([]Node, len(c.kwargs))
-	for i, kwarg := range c.kwargs {
+	kwargs := make([]Node, len(c.Kwargs))
+	for i, kwarg := range c.Kwargs {
 		kwargs[i] = kwarg
 	}
-	return fmt.Sprintf("nodes.Call(node=%s, args=%s, kwargs=%s, dynArgs=%s, dynKwargs=%s)", c.node, reprExpressionList(c.args), reprNodeList(kwargs), c.dynArgs, c.dynKwargs)
+	return fmt.Sprintf("nodes.Call(node=%s, args=%s, kwargs=%s, dynArgs=%s, dynKwargs=%s)", c.Node, reprExpressionList(c.Args), reprNodeList(kwargs), c.DynArgs, c.DynKwargs)
 }
 
 func (c *Call) Dumps(indent int) string {
-	kwargs := make([]Node, len(c.kwargs))
-	for i, kwarg := range c.kwargs {
+	kwargs := make([]Node, len(c.Kwargs))
+	for i, kwarg := range c.Kwargs {
 		kwargs[i] = kwarg
 	}
 
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Call(")
-	fmt.Fprintf(sb, "  node=%s,\n", c.node)
+	fmt.Fprintf(sb, "  node=%s,\n", c.Node)
 	sb.WriteIndent()
-	sb.WriteExpressionList("args", c.args)
+	sb.WriteExpressionList("args", c.Args)
 	sb.WriteIndent()
 	sb.WriteNodeList("kwargs", kwargs)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  dyn_args=%s,\n", c.dynArgs)
+	fmt.Fprintf(sb, "  dyn_args=%s,\n", c.DynArgs)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  dyn_kwargs=%s,\n", c.dynKwargs)
+	fmt.Fprintf(sb, "  dyn_kwargs=%s,\n", c.DynKwargs)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
 }
 
 func (c *Call) ChildNodes() []ChildNode {
-	args := make([]Node, len(c.args))
-	for i := range c.args {
-		args[i] = c.args[i]
+	args := make([]Node, len(c.Args))
+	for i := range c.Args {
+		args[i] = c.Args[i]
 	}
-	kwargs := make([]Node, len(c.kwargs))
-	for i := range c.kwargs {
-		kwargs[i] = c.kwargs[i]
+	kwargs := make([]Node, len(c.Kwargs))
+	for i := range c.Kwargs {
+		kwargs[i] = c.Kwargs[i]
 	}
 	return []ChildNode{
-		{Name: "node", Value: c.node},
+		{Name: "node", Value: c.Node},
 		{Name: "args", Values: args},
 		{Name: "kwargs", Values: kwargs},
-		{Name: "dynArgs", Value: c.dynArgs},
-		{Name: "dynKwargs", Value: c.dynKwargs},
+		{Name: "dynArgs", Value: c.DynArgs},
+		{Name: "dynKwargs", Value: c.DynKwargs},
 	}
 }
 
 type Getitem struct {
 	BaseNode
 
-	node Expression
-	arg  Expression
-	ctx  string
+	Node Expression
+	Arg  Expression
+	Ctx  string
 }
 
 func NewGetitem(token token.Token, node Expression, arg Expression, ctx string) *Getitem {
 	gi := &Getitem{
-		node: node,
-		arg:  arg,
-		ctx:  ctx,
+		Node: node,
+		Arg:  arg,
+		Ctx:  ctx,
 	}
 	gi.BaseNode = NewBaseNode(token)
 	return gi
@@ -580,17 +609,17 @@ func NewGetitem(token token.Token, node Expression, arg Expression, ctx string) 
 func (gi *Getitem) expressionNode() {}
 
 func (gi *Getitem) String() string {
-	return fmt.Sprintf("nodes.Getitem(node=%s, arg=%s, ctx=%s)", gi.node, gi.arg, reprString(gi.ctx))
+	return fmt.Sprintf("nodes.Getitem(node=%s, arg=%s, ctx=%s)", gi.Node, gi.Arg, reprString(gi.Ctx))
 }
 
 func (gi *Getitem) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Getitem(")
-	fmt.Fprintf(sb, "  node=%s,\n", gi.node)
+	fmt.Fprintf(sb, "  node=%s,\n", gi.Node)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  arg=%s,\n", gi.arg)
+	fmt.Fprintf(sb, "  arg=%s,\n", gi.Arg)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  ctx=%s,\n", reprString(gi.ctx))
+	fmt.Fprintf(sb, "  ctx=%s,\n", reprString(gi.Ctx))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -598,24 +627,24 @@ func (gi *Getitem) Dumps(indent int) string {
 
 func (gi *Getitem) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "node", Value: gi.node},
-		{Name: "arg", Value: gi.arg},
+		{Name: "node", Value: gi.Node},
+		{Name: "arg", Value: gi.Arg},
 	}
 }
 
 type Getattr struct {
 	BaseNode
 
-	node Expression
-	attr string
-	ctx  string
+	Node Expression
+	Attr string
+	Ctx  string
 }
 
 func NewGetattr(token token.Token, node Expression, attr string, ctx string) *Getattr {
 	ga := &Getattr{
-		node: node,
-		attr: attr,
-		ctx:  ctx,
+		Node: node,
+		Attr: attr,
+		Ctx:  ctx,
 	}
 	ga.BaseNode = NewBaseNode(token)
 	return ga
@@ -624,17 +653,17 @@ func NewGetattr(token token.Token, node Expression, attr string, ctx string) *Ge
 func (ga *Getattr) expressionNode() {}
 
 func (ga *Getattr) String() string {
-	return fmt.Sprintf("nodes.Getattr(node=%s, attr=%s, ctx=%s)", ga.node, reprString(ga.attr), reprString(ga.ctx))
+	return fmt.Sprintf("nodes.Getattr(node=%s, attr=%s, ctx=%s)", ga.Node, reprString(ga.Attr), reprString(ga.Ctx))
 }
 
 func (ga *Getattr) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Getattr(")
-	fmt.Fprintf(sb, "  node=%s,\n", ga.node)
+	fmt.Fprintf(sb, "  node=%s,\n", ga.Node)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  attr=%s,\n", reprString(ga.attr))
+	fmt.Fprintf(sb, "  attr=%s,\n", reprString(ga.Attr))
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  ctx=%s,\n", reprString(ga.ctx))
+	fmt.Fprintf(sb, "  ctx=%s,\n", reprString(ga.Ctx))
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -642,23 +671,23 @@ func (ga *Getattr) Dumps(indent int) string {
 
 func (ga *Getattr) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "node", Value: ga.node},
+		{Name: "node", Value: ga.Node},
 	}
 }
 
 type Slice struct {
 	BaseNode
 
-	start Expression
-	stop  Expression
-	step  Expression
+	Start Expression
+	Stop  Expression
+	Step  Expression
 }
 
 func NewSlice(token token.Token, start Expression, stop Expression, step Expression) *Slice {
 	s := &Slice{
-		start: start,
-		stop:  stop,
-		step:  step,
+		Start: start,
+		Stop:  stop,
+		Step:  step,
 	}
 	s.BaseNode = NewBaseNode(token)
 	return s
@@ -667,17 +696,17 @@ func NewSlice(token token.Token, start Expression, stop Expression, step Express
 func (s *Slice) expressionNode() {}
 
 func (s *Slice) String() string {
-	return fmt.Sprintf("nodes.Slice(start=%s, stop=%s, step=%s)", s.start, s.stop, s.step)
+	return fmt.Sprintf("nodes.Slice(start=%s, stop=%s, step=%s)", s.Start, s.Stop, s.Step)
 }
 
 func (s *Slice) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Slice(")
-	fmt.Fprintf(sb, "  start=%s,\n", s.start)
+	fmt.Fprintf(sb, "  start=%s,\n", s.Start)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  stop=%s,\n", s.stop)
+	fmt.Fprintf(sb, "  stop=%s,\n", s.Stop)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  step=%s,\n", s.step)
+	fmt.Fprintf(sb, "  step=%s,\n", s.Step)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -685,21 +714,21 @@ func (s *Slice) Dumps(indent int) string {
 
 func (s *Slice) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "start", Value: s.start},
-		{Name: "stop", Value: s.stop},
-		{Name: "step", Value: s.step},
+		{Name: "start", Value: s.Start},
+		{Name: "stop", Value: s.Stop},
+		{Name: "step", Value: s.Step},
 	}
 }
 
 type Concat struct {
 	BaseNode
 
-	items []Expression
+	Items []Expression
 }
 
 func NewConcat(token token.Token, items []Expression) *Concat {
 	c := &Concat{
-		items: items,
+		Items: items,
 	}
 	c.BaseNode = NewBaseNode(token)
 	return c
@@ -708,22 +737,22 @@ func NewConcat(token token.Token, items []Expression) *Concat {
 func (c *Concat) expressionNode() {}
 
 func (c *Concat) String() string {
-	return fmt.Sprintf("nodes.Concat(items=%s)", reprExpressionList(c.items))
+	return fmt.Sprintf("nodes.Concat(items=%s)", reprExpressionList(c.Items))
 }
 
 func (c *Concat) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Concat(")
-	sb.WriteExpressionList("items", c.items)
+	sb.WriteExpressionList("items", c.Items)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
 }
 
 func (c *Concat) ChildNodes() []ChildNode {
-	items := make([]Node, len(c.items))
-	for i := range c.items {
-		items[i] = c.items[i]
+	items := make([]Node, len(c.Items))
+	for i := range c.Items {
+		items[i] = c.Items[i]
 	}
 	return []ChildNode{
 		{Name: "items", Values: items},
@@ -733,37 +762,37 @@ func (c *Concat) ChildNodes() []ChildNode {
 type Compare struct {
 	BaseNode
 
-	expr Expression
-	ops  []*Operand
+	Expr Expression
+	Ops  []*Operand
 }
 
 func NewCompare(token token.Token, expr Expression, ops []*Operand) *Compare {
 	return &Compare{
 		BaseNode: NewBaseNode(token),
-		expr:     expr,
-		ops:      ops,
+		Expr:     expr,
+		Ops:      ops,
 	}
 }
 
 func (c *Compare) expressionNode() {}
 
 func (c *Compare) String() string {
-	ops := make([]Node, len(c.ops))
-	for i := range c.ops {
-		ops[i] = c.ops[i]
+	ops := make([]Node, len(c.Ops))
+	for i := range c.Ops {
+		ops[i] = c.Ops[i]
 	}
-	return fmt.Sprintf("nodes.Compare(expr=%s, ops=%s)", c.expr, reprNodeList(ops))
+	return fmt.Sprintf("nodes.Compare(expr=%s, ops=%s)", c.Expr, reprNodeList(ops))
 }
 
 func (c *Compare) Dumps(indent int) string {
-	ops := make([]Node, len(c.ops))
-	for i := range c.ops {
-		ops[i] = c.ops[i]
+	ops := make([]Node, len(c.Ops))
+	for i := range c.Ops {
+		ops[i] = c.Ops[i]
 	}
 
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.Compare(")
-	fmt.Fprintf(sb, "  expr=%s,\n", c.expr)
+	fmt.Fprintf(sb, "  expr=%s,\n", c.Expr)
 	sb.WriteIndent()
 	sb.WriteNodeList("ops", ops)
 	sb.WriteIndent()
@@ -772,39 +801,39 @@ func (c *Compare) Dumps(indent int) string {
 }
 
 func (c *Compare) ChildNodes() []ChildNode {
-	ops := make([]Node, len(c.ops))
-	for i := range c.ops {
-		ops[i] = c.ops[i]
+	ops := make([]Node, len(c.Ops))
+	for i := range c.Ops {
+		ops[i] = c.Ops[i]
 	}
 	return []ChildNode{
-		{Name: "expr", Value: c.expr},
+		{Name: "expr", Value: c.Expr},
 		{Name: "ops", Values: ops},
 	}
 }
 
 func stringBinExpr(name string, be *BinExpr) string {
-	return fmt.Sprintf("nodes.%s(left=%s, right=%s)", name, be.left, be.right)
+	return fmt.Sprintf("nodes.%s(left=%s, right=%s)", name, be.Left, be.Right)
 }
 
 func dumpsBinExpr(name string, be *BinExpr, indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent(fmt.Sprintf("nodes.%s(", name))
-	fmt.Fprintf(sb, "  left=%s,\n", be.left)
+	fmt.Fprintf(sb, "  left=%s,\n", be.Left)
 	sb.WriteIndent()
-	fmt.Fprintf(sb, "  right=%s,\n", be.right)
+	fmt.Fprintf(sb, "  right=%s,\n", be.Right)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
 }
 
 func stringUnaryExpr(name string, ue *UnaryExpr) string {
-	return fmt.Sprintf("nodes.%s(node=%s)", name, ue.node)
+	return fmt.Sprintf("nodes.%s(node=%s)", name, ue.Node)
 }
 
 func dumpsUnaryExpr(name string, ue *UnaryExpr, indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent(fmt.Sprintf("nodes.%s(", name))
-	fmt.Fprintf(sb, "  node=%s,\n", ue.node)
+	fmt.Fprintf(sb, "  node=%s,\n", ue.Node)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -818,9 +847,9 @@ func NewMul(token token.Token, left Expression, right Expression) *Mul {
 	return &Mul{
 		BinExpr: BinExpr{
 			BaseNode: NewBaseNode(token),
-			left:     left,
-			operator: "*",
-			right:    right,
+			Left:     left,
+			Operator: "*",
+			Right:    right,
 		},
 	}
 }
@@ -841,9 +870,9 @@ func NewDiv(token token.Token, left Expression, right Expression) *Div {
 	return &Div{
 		BinExpr: BinExpr{
 			BaseNode: NewBaseNode(token),
-			left:     left,
-			operator: "/",
-			right:    right,
+			Left:     left,
+			Operator: "/",
+			Right:    right,
 		},
 	}
 }
@@ -864,9 +893,9 @@ func NewFloorDiv(token token.Token, left Expression, right Expression) *FloorDiv
 	return &FloorDiv{
 		BinExpr: BinExpr{
 			BaseNode: NewBaseNode(token),
-			left:     left,
-			operator: "//",
-			right:    right,
+			Left:     left,
+			Operator: "//",
+			Right:    right,
 		},
 	}
 }
@@ -887,9 +916,9 @@ func NewAdd(token token.Token, left Expression, right Expression) *Add {
 	return &Add{
 		BinExpr: BinExpr{
 			BaseNode: NewBaseNode(token),
-			left:     left,
-			operator: "+",
-			right:    right,
+			Left:     left,
+			Operator: "+",
+			Right:    right,
 		},
 	}
 }
@@ -910,9 +939,9 @@ func NewSub(token token.Token, left Expression, right Expression) *Sub {
 	return &Sub{
 		BinExpr: BinExpr{
 			BaseNode: NewBaseNode(token),
-			left:     left,
-			operator: "-",
-			right:    right,
+			Left:     left,
+			Operator: "-",
+			Right:    right,
 		},
 	}
 }
@@ -933,9 +962,9 @@ func NewMod(token token.Token, left Expression, right Expression) *Mod {
 	return &Mod{
 		BinExpr: BinExpr{
 			BaseNode: NewBaseNode(token),
-			left:     left,
-			operator: "%",
-			right:    right,
+			Left:     left,
+			Operator: "%",
+			Right:    right,
 		},
 	}
 }
@@ -956,9 +985,9 @@ func NewPow(token token.Token, left Expression, right Expression) *Pow {
 	return &Pow{
 		BinExpr: BinExpr{
 			BaseNode: NewBaseNode(token),
-			left:     left,
-			operator: "**",
-			right:    right,
+			Left:     left,
+			Operator: "**",
+			Right:    right,
 		},
 	}
 }
@@ -979,9 +1008,9 @@ func NewAnd(token token.Token, left Expression, right Expression) *And {
 	return &And{
 		BinExpr: BinExpr{
 			BaseNode: NewBaseNode(token),
-			left:     left,
-			operator: "and",
-			right:    right,
+			Left:     left,
+			Operator: "and",
+			Right:    right,
 		},
 	}
 }
@@ -1002,9 +1031,9 @@ func NewOr(token token.Token, left Expression, right Expression) *Or {
 	return &Or{
 		BinExpr: BinExpr{
 			BaseNode: NewBaseNode(token),
-			left:     left,
-			operator: "or",
-			right:    right,
+			Left:     left,
+			Operator: "or",
+			Right:    right,
 		},
 	}
 }
@@ -1025,8 +1054,8 @@ func NewNot(token token.Token, node Expression) *Not {
 	return &Not{
 		UnaryExpr: UnaryExpr{
 			BaseNode: NewBaseNode(token),
-			operator: "not",
-			node:     node,
+			Operator: "not",
+			Node:     node,
 		},
 	}
 }
@@ -1047,8 +1076,8 @@ func NewNeg(token token.Token, node Expression) *Neg {
 	return &Neg{
 		UnaryExpr: UnaryExpr{
 			BaseNode: NewBaseNode(token),
-			operator: "-",
-			node:     node,
+			Operator: "-",
+			Node:     node,
 		},
 	}
 }
@@ -1069,8 +1098,8 @@ func NewPos(token token.Token, node Expression) *Pos {
 	return &Pos{
 		UnaryExpr: UnaryExpr{
 			BaseNode: NewBaseNode(token),
-			operator: "+",
-			node:     node,
+			Operator: "+",
+			Node:     node,
 		},
 	}
 }
@@ -1202,26 +1231,26 @@ func (in *InternalName) Dumps(indent int) string {
 type MarkSafe struct {
 	BaseNode
 
-	expr Expression
+	Expr Expression
 }
 
 func NewMarkSafe(token token.Token, expr Expression) *MarkSafe {
 	return &MarkSafe{
 		BaseNode: NewBaseNode(token),
-		expr:     expr,
+		Expr:     expr,
 	}
 }
 
 func (ms *MarkSafe) expressionNode() {}
 
 func (ms *MarkSafe) String() string {
-	return fmt.Sprintf("nodes.MarkSafe(expr=%s)", ms.expr)
+	return fmt.Sprintf("nodes.MarkSafe(expr=%s)", ms.Expr)
 }
 
 func (ms *MarkSafe) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.MarkSafe(")
-	fmt.Fprintf(sb, "  expr=%s,\n", ms.expr)
+	fmt.Fprintf(sb, "  expr=%s,\n", ms.Expr)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -1229,33 +1258,33 @@ func (ms *MarkSafe) Dumps(indent int) string {
 
 func (ms *MarkSafe) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "expr", Value: ms.expr},
+		{Name: "expr", Value: ms.Expr},
 	}
 }
 
 type MarkSafeIfAutoescape struct {
 	BaseNode
 
-	expr Expression
+	Expr Expression
 }
 
 func NewMarkSafeIfAutoescape(token token.Token, expr Expression) *MarkSafeIfAutoescape {
 	return &MarkSafeIfAutoescape{
 		BaseNode: NewBaseNode(token),
-		expr:     expr,
+		Expr:     expr,
 	}
 }
 
 func (ms *MarkSafeIfAutoescape) expressionNode() {}
 
 func (ms *MarkSafeIfAutoescape) String() string {
-	return fmt.Sprintf("nodes.MarkSafeIfAutoescape(expr=%s)", ms.expr)
+	return fmt.Sprintf("nodes.MarkSafeIfAutoescape(expr=%s)", ms.Expr)
 }
 
 func (ms *MarkSafeIfAutoescape) Dumps(indent int) string {
 	sb := newStringBuilder(indent)
 	sb.WriteLineIndent("nodes.MarkSafeIfAutoescape(")
-	fmt.Fprintf(sb, "  expr=%s,\n", ms.expr)
+	fmt.Fprintf(sb, "  expr=%s,\n", ms.Expr)
 	sb.WriteIndent()
 	sb.WriteString(")")
 	return sb.String()
@@ -1263,7 +1292,7 @@ func (ms *MarkSafeIfAutoescape) Dumps(indent int) string {
 
 func (ms *MarkSafeIfAutoescape) ChildNodes() []ChildNode {
 	return []ChildNode{
-		{Name: "expr", Value: ms.expr},
+		{Name: "expr", Value: ms.Expr},
 	}
 }
 

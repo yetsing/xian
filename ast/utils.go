@@ -159,3 +159,30 @@ func (sb *iStringBuilder) WriteStringList(name string, strs []string) {
 		sb.WriteString("  ],\n")
 	}
 }
+
+func SetCtx(node Node, ctx string) {
+	todo := []Node{node}
+	for len(todo) > 0 {
+		node := todo[0]
+		switch n := node.(type) {
+		case *Name:
+			n.Ctx = ctx
+		case *Tuple:
+			n.Ctx = ctx
+		case *Getitem:
+			n.Ctx = ctx
+		case *Getattr:
+			n.Ctx = ctx
+		}
+
+		todo = todo[1:]
+		for _, child := range node.ChildNodes() {
+			if child.Value != nil {
+				todo = append(todo, child.Value)
+			} else {
+				todo = append(todo, child.Values...)
+			}
+		}
+
+	}
+}
