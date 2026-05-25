@@ -250,7 +250,8 @@ func (tl *TemplateLexer) splitSegments() {
 				})
 				return
 			}
-			if tl.isBalance(startIndex+len(matchCodeTag.start), idx) {
+			if matchCodeTag.startType == token.TOKEN_COMMENT_BEGIN ||
+				tl.isBalance(startIndex+len(matchCodeTag.start), idx) {
 				endIndex = idx
 				break
 			}

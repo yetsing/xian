@@ -68,6 +68,9 @@ func reprFloat64(f float64) string {
 }
 
 func reprAny(v any) string {
+	if v == nil {
+		return "none" // Python 中的 None
+	}
 	switch vv := v.(type) {
 	case string:
 		return reprString(vv)
